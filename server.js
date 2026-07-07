@@ -167,7 +167,14 @@ async function readBody(req) {
 }
 
 function safeFilePath(urlPath) {
-  const requested = urlPath === "/" ? "/index.html" : urlPath;
+  const aliases = {
+    "/coach": "/coach.html",
+    "/runner": "/runner.html",
+    "/profiles": "/profiles.html",
+    "/profile": "/profile.html",
+    "/run": "/run.html",
+  };
+  const requested = urlPath === "/" ? "/index.html" : aliases[urlPath] || urlPath;
   const clean = normalize(decodeURIComponent(requested)).replace(/^(\.\.[/\\])+/, "");
   return join(root, clean);
 }

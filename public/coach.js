@@ -72,7 +72,7 @@ const el = {
   layerName: document.querySelector("#layerName"),
 };
 
-const runnerUrl = `${location.origin}/runner.html?session=${encodeURIComponent(sessionId)}`;
+const runnerUrl = `${location.origin}/runner?session=${encodeURIComponent(sessionId)}`;
 el.runnerLink.href = runnerUrl;
 
 function isTrackingFresh(session) {
