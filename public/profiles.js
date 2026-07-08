@@ -7,10 +7,10 @@ function emptyState(text) {
   return div;
 }
 
-function renderProfilesPage() {
+async function renderProfilesPage() {
   const list = document.querySelector("#profilesList");
   if (!list) return;
-  const profiles = loadProfiles();
+  const profiles = await loadProfiles();
   list.innerHTML = "";
 
   if (!profiles.length) {
@@ -30,18 +30,18 @@ function renderProfilesPage() {
     list.append(card);
   }
 
-  document.querySelector("#createProfile")?.addEventListener("click", () => {
+  document.querySelector("#createProfile")?.addEventListener("click", async () => {
     const name = prompt("Runner name");
     if (!name?.trim()) return;
-    const profile = createRunnerProfile(name);
+    const profile = await createRunnerProfile(name);
     location.href = `/profile.html?id=${encodeURIComponent(profile.id)}`;
   });
 }
 
-function renderProfilePage() {
+async function renderProfilePage() {
   const runsList = document.querySelector("#runsList");
   if (!runsList) return;
-  const profile = findProfile(params.get("id"));
+  const profile = await findProfile(params.get("id"));
   document.querySelector("#profileName").textContent = profile?.name || "Profile not found";
   runsList.innerHTML = "";
 
@@ -98,28 +98,28 @@ function renderProfileOverview(profile) {
     const file = photoInput.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.addEventListener("load", () => {
-      updateRunnerProfile(profile.id, { photo: reader.result });
+    reader.addEventListener("load", async () => {
+      await updateRunnerProfile(profile.id, { photo: reader.result });
       renderProfilePhoto(photoPreview, { ...profile, photo: reader.result });
     });
     reader.readAsDataURL(file);
   });
 
-  form.addEventListener("submit", (event) => {
+  form.addEventListener("submit", async (event) => {
     event.preventDefault();
     if (!isEditing) {
       setProfileEditing(true);
       nameInput.focus();
       return;
     }
-    const updated = updateRunnerProfile(profile.id, {
+    const updated = await updateRunnerProfile(profile.id, {
       name: nameInput.value.trim() || "Runner",
       age: ageInput.value.trim(),
       location: locationInput.value.trim(),
       goals: goalsInput.value.trim(),
       coachNotes: coachNotesInput.value.trim(),
     });
-    document.querySelector("#profileName").textContent = updated.name;
+    document.querySelector("#profileName").textContent = updated?.name || "Runner";
     setProfileEditing(false);
     saveButton.textContent = "Saved";
     setTimeout(() => (saveButton.textContent = "Edit profile"), 900);
@@ -166,11 +166,11 @@ function tableRow(cells, isHead = false) {
   return row;
 }
 
-function renderRunPage() {
+async function renderRunPage() {
   const title = document.querySelector("#runTitle");
   if (!title) return;
-  const profile = findProfile(params.get("profile"));
-  const run = profile?.runs?.find((item) => item.id === params.get("run"));
+  const profile = await findProfile(params.get("profile"));
+  const run = profile ? await loadRun(profile.id, params.get("run")) : null;
   document.querySelector("#backToProfile").href = profile
     ? `/profile.html?id=${encodeURIComponent(profile.id)}`
     : "/profiles.html";
@@ -193,13 +193,13 @@ function renderRunPage() {
   let notesEditing = false;
   notes.value = run.notes || "";
   setNotesEditing(false);
-  notesButton.addEventListener("click", () => {
+  notesButton.addEventListener("click", async () => {
     if (!notesEditing) {
       setNotesEditing(true);
       notes.focus();
       return;
     }
-    updateRunNotes(profile.id, run.id, notes.value);
+    await updateRunNotes(profile.id, run.id, notes.value);
     setNotesEditing(false);
     notesButton.textContent = "Saved";
     setTimeout(() => (notesButton.textContent = "Edit notes"), 900);

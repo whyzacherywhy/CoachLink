@@ -2,14 +2,14 @@
 
 ## Phase 1: Profiles And Saved Runs
 
-- Add Postgres client dependency.
-- Create a small `db.js` helper with:
+- [x] Add Postgres client dependency.
+- [x] Create a small `db.js` helper with:
   - database connection
   - query helper
   - local startup validation
-- Add profile API routes to `server.js`.
-- Add saved-run API routes to `server.js`.
-- Update `public/run-storage.js` so profile functions use `fetch(...)` instead of `localStorage`.
+- [x] Add profile API routes to `server.js`.
+- [x] Add saved-run API routes to `server.js`.
+- [x] Update `public/run-storage.js` so profile functions use `fetch(...)` instead of `localStorage`.
 - Keep local storage as a temporary fallback only if `DATABASE_URL` is missing.
 
 ## Phase 2: Coach Login

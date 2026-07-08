@@ -1,7 +1,7 @@
 const profilesStorageKey = "coachLive.profiles.v1";
 const runDraftPrefix = "coachLive.runDraft.";
 
-function loadProfiles() {
+function loadLocalProfiles() {
   try {
     return JSON.parse(localStorage.getItem(profilesStorageKey)) || [];
   } catch {
@@ -9,8 +9,20 @@ function loadProfiles() {
   }
 }
 
-function saveProfiles(profiles) {
+function saveLocalProfiles(profiles) {
   localStorage.setItem(profilesStorageKey, JSON.stringify(profiles));
+}
+
+async function apiJson(path, options = {}) {
+  const response = await fetch(path, {
+    ...options,
+    headers: {
+      "content-type": "application/json",
+      ...(options.headers || {}),
+    },
+  });
+  if (!response.ok) throw new Error("Database unavailable");
+  return response.json();
 }
 
 function profileId() {
@@ -21,8 +33,29 @@ function runId() {
   return `run-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
-function createRunnerProfile(name) {
-  const profiles = loadProfiles();
+async function loadProfiles() {
+  try {
+    const payload = await apiJson("/api/profiles");
+    return payload.profiles || [];
+  } catch {
+    return loadLocalProfiles();
+  }
+}
+
+async function createRunnerProfile(name) {
+  try {
+    const payload = await apiJson("/api/profiles", {
+      method: "POST",
+      body: JSON.stringify({ name }),
+    });
+    return payload.profile;
+  } catch {
+    return createLocalRunnerProfile(name);
+  }
+}
+
+function createLocalRunnerProfile(name) {
+  const profiles = loadLocalProfiles();
   const profile = {
     id: profileId(),
     name: (name || "Runner").trim(),
@@ -35,42 +68,99 @@ function createRunnerProfile(name) {
     runs: [],
   };
   profiles.unshift(profile);
-  saveProfiles(profiles);
+  saveLocalProfiles(profiles);
   return profile;
 }
 
-function findProfile(id) {
-  return loadProfiles().find((profile) => profile.id === id) || null;
+async function findProfile(id) {
+  if (!id) return null;
+  try {
+    const payload = await apiJson(`/api/profiles/${encodeURIComponent(id)}`);
+    return payload.profile;
+  } catch {
+    return loadLocalProfiles().find((profile) => profile.id === id) || null;
+  }
 }
 
-function updateRunnerProfile(profileIdValue, updates) {
-  const profiles = loadProfiles();
+async function updateRunnerProfile(profileIdValue, updates) {
+  try {
+    const payload = await apiJson(`/api/profiles/${encodeURIComponent(profileIdValue)}`, {
+      method: "PATCH",
+      body: JSON.stringify(updates),
+    });
+    return payload.profile;
+  } catch {
+    return updateLocalRunnerProfile(profileIdValue, updates);
+  }
+}
+
+function updateLocalRunnerProfile(profileIdValue, updates) {
+  const profiles = loadLocalProfiles();
   const profile = profiles.find((item) => item.id === profileIdValue);
   if (!profile) return null;
   Object.assign(profile, updates, { updatedAt: Date.now() });
-  saveProfiles(profiles);
+  saveLocalProfiles(profiles);
   return profile;
 }
 
-function saveRunToProfile(profileIdValue, run) {
-  const profiles = loadProfiles();
+async function saveRunToProfile(profileIdValue, run) {
+  try {
+    const payload = await apiJson(`/api/profiles/${encodeURIComponent(profileIdValue)}/runs`, {
+      method: "POST",
+      body: JSON.stringify({ run }),
+    });
+    return payload.run;
+  } catch {
+    return saveLocalRunToProfile(profileIdValue, run);
+  }
+}
+
+function saveLocalRunToProfile(profileIdValue, run) {
+  const profiles = loadLocalProfiles();
   const profile = profiles.find((item) => item.id === profileIdValue);
   if (!profile) return null;
   profile.runs ||= [];
   profile.runs.unshift({ ...run, id: run.id || runId(), savedAt: Date.now(), notes: run.notes || "" });
   profile.runs.sort((a, b) => (b.startedAt || b.savedAt || 0) - (a.startedAt || a.savedAt || 0));
-  saveProfiles(profiles);
+  saveLocalProfiles(profiles);
   return profile.runs[0];
 }
 
-function updateRunNotes(profileIdValue, runIdValue, notes) {
-  const profiles = loadProfiles();
+async function loadRun(profileIdValue, runIdValue) {
+  try {
+    const payload = await apiJson(
+      `/api/profiles/${encodeURIComponent(profileIdValue)}/runs/${encodeURIComponent(runIdValue)}`,
+    );
+    return payload.run;
+  } catch {
+    const profile = loadLocalProfiles().find((item) => item.id === profileIdValue);
+    return profile?.runs?.find((item) => item.id === runIdValue) || null;
+  }
+}
+
+async function updateRunNotes(profileIdValue, runIdValue, notes) {
+  try {
+    const payload = await apiJson(
+      `/api/profiles/${encodeURIComponent(profileIdValue)}/runs/${encodeURIComponent(runIdValue)}/notes`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ notes }),
+      },
+    );
+    return payload.run;
+  } catch {
+    return updateLocalRunNotes(profileIdValue, runIdValue, notes);
+  }
+}
+
+function updateLocalRunNotes(profileIdValue, runIdValue, notes) {
+  const profiles = loadLocalProfiles();
   const profile = profiles.find((item) => item.id === profileIdValue);
   const run = profile?.runs?.find((item) => item.id === runIdValue);
   if (!run) return null;
   run.notes = notes;
   run.notesUpdatedAt = Date.now();
-  saveProfiles(profiles);
+  saveLocalProfiles(profiles);
   return run;
 }
 

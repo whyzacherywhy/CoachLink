@@ -54,6 +54,9 @@ create table if not exists run_mile_splits (
   id bigserial primary key,
   run_id uuid not null references run_entries(id) on delete cascade,
   mile_number integer not null,
+  label text not null default '',
+  distance_miles numeric(8, 3) not null default 1,
+  is_partial boolean not null default false,
   ended_at timestamptz,
   seconds integer not null default 0,
   pace numeric(8, 3) not null default 0,
@@ -68,6 +71,7 @@ create table if not exists run_coach_splits (
   started_at timestamptz,
   ended_at timestamptz,
   elapsed_seconds integer not null default 0,
+  distance_meters numeric(10, 2) not null default 0,
   distance_miles numeric(8, 3) not null default 0,
   pace numeric(8, 3) not null default 0,
   elevation_feet integer,
@@ -97,3 +101,8 @@ create index if not exists runner_profiles_coach_id_idx on runner_profiles(coach
 create index if not exists run_entries_profile_id_started_at_idx on run_entries(profile_id, started_at desc);
 create index if not exists run_route_points_run_id_idx on run_route_points(run_id, point_index);
 create index if not exists run_history_items_run_id_idx on run_history_items(run_id, happened_at);
+
+alter table run_mile_splits add column if not exists label text not null default '';
+alter table run_mile_splits add column if not exists distance_miles numeric(8, 3) not null default 1;
+alter table run_mile_splits add column if not exists is_partial boolean not null default false;
+alter table run_coach_splits add column if not exists distance_meters numeric(10, 2) not null default 0;

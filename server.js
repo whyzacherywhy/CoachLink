@@ -2,6 +2,17 @@ import http from "node:http";
 import { readFile } from "node:fs/promises";
 import { extname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  createProfile,
+  getProfile,
+  getRun,
+  hasDatabase,
+  initDatabase,
+  listProfiles,
+  saveRun,
+  updateProfile,
+  updateRunNotes,
+} from "./db.js";
 
 const root = fileURLToPath(new URL("./public", import.meta.url));
 const port = Number(process.env.PORT || 4173);
@@ -178,6 +189,10 @@ async function readBody(req) {
   return JSON.parse(Buffer.concat(chunks).toString("utf8"));
 }
 
+function databaseUnavailable(res) {
+  return json(res, 503, { error: "Database is not configured." });
+}
+
 function safeFilePath(urlPath) {
   const aliases = {
     "/coach": "/coach.html",
@@ -205,6 +220,59 @@ const server = http.createServer(async (req, res) => {
   try {
     if (req.method === "GET" && url.pathname === "/api/sessions") {
       return json(res, 200, snapshot());
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/profiles") {
+      if (!hasDatabase) return databaseUnavailable(res);
+      return json(res, 200, { profiles: await listProfiles() });
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/profiles") {
+      if (!hasDatabase) return databaseUnavailable(res);
+      const body = await readBody(req);
+      const name = String(body.name || "").trim();
+      if (!name) return json(res, 400, { error: "Runner name is required." });
+      return json(res, 201, { profile: await createProfile({ name }) });
+    }
+
+    const profileMatch = url.pathname.match(/^\/api\/profiles\/([^/]+)$/);
+    if (profileMatch && req.method === "GET") {
+      if (!hasDatabase) return databaseUnavailable(res);
+      const profile = await getProfile(profileMatch[1]);
+      if (!profile) return json(res, 404, { error: "Profile not found." });
+      return json(res, 200, { profile });
+    }
+
+    if (profileMatch && req.method === "PATCH") {
+      if (!hasDatabase) return databaseUnavailable(res);
+      const profile = await updateProfile(profileMatch[1], await readBody(req));
+      if (!profile) return json(res, 404, { error: "Profile not found." });
+      return json(res, 200, { profile });
+    }
+
+    const profileRunCollectionMatch = url.pathname.match(/^\/api\/profiles\/([^/]+)\/runs$/);
+    if (profileRunCollectionMatch && req.method === "POST") {
+      if (!hasDatabase) return databaseUnavailable(res);
+      const body = await readBody(req);
+      const saved = await saveRun(profileRunCollectionMatch[1], body.run || {});
+      return json(res, 201, { run: saved });
+    }
+
+    const profileRunNotesMatch = url.pathname.match(/^\/api\/profiles\/([^/]+)\/runs\/([^/]+)\/notes$/);
+    if (profileRunNotesMatch && req.method === "PATCH") {
+      if (!hasDatabase) return databaseUnavailable(res);
+      const body = await readBody(req);
+      const run = await updateRunNotes(profileRunNotesMatch[1], profileRunNotesMatch[2], body.notes || "");
+      if (!run) return json(res, 404, { error: "Run not found." });
+      return json(res, 200, { run });
+    }
+
+    const profileRunMatch = url.pathname.match(/^\/api\/profiles\/([^/]+)\/runs\/([^/]+)$/);
+    if (profileRunMatch && req.method === "GET") {
+      if (!hasDatabase) return databaseUnavailable(res);
+      const run = await getRun(profileRunMatch[1], profileRunMatch[2]);
+      if (!run) return json(res, 404, { error: "Run not found." });
+      return json(res, 200, { run });
     }
 
     if (req.method === "GET" && url.pathname === "/api/events") {
@@ -405,6 +473,13 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-server.listen(port, host, () => {
-  console.log(`Coach Live Map is running on ${host}:${port}`);
-});
+initDatabase()
+  .then(() => {
+    server.listen(port, host, () => {
+      console.log(`Coach Live Map is running on ${host}:${port}`);
+    });
+  })
+  .catch((error) => {
+    console.error("Database startup failed", error);
+    process.exitCode = 1;
+  });

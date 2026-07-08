@@ -427,8 +427,8 @@ async function startEffortSplit() {
   if (!response.ok) throw new Error("Effort split failed");
 }
 
-function populateProfileSelect() {
-  const profiles = loadProfiles();
+async function populateProfileSelect() {
+  const profiles = await loadProfiles();
   el.existingProfile.innerHTML = "";
   if (!profiles.length) {
     const option = document.createElement("option");
@@ -447,7 +447,7 @@ function populateProfileSelect() {
   }
 }
 
-function openSaveModal() {
+async function openSaveModal() {
   if (activeSession?.points?.length) {
     lastSaveableSession = snapshotForSave(activeSession);
     saveRunDraft(sessionId, lastSaveableSession);
@@ -459,7 +459,7 @@ function openSaveModal() {
     el.saveStatus.textContent = "Run data will include route, splits, history, elevation, weather, and notes.";
   }
   el.newProfileName.value = lastSaveableSession?.runnerName || "";
-  populateProfileSelect();
+  await populateProfileSelect();
   el.saveModal.hidden = false;
 }
 
@@ -487,8 +487,8 @@ async function saveCurrentRunToNewProfile() {
       return;
     }
     const run = await createSavedRun();
-    const profile = createRunnerProfile(name);
-    const saved = saveRunToProfile(profile.id, run);
+    const profile = await createRunnerProfile(name);
+    const saved = await saveRunToProfile(profile.id, run);
     location.href = `/run.html?profile=${encodeURIComponent(profile.id)}&run=${encodeURIComponent(saved.id)}`;
   } catch (error) {
     el.saveStatus.textContent = error.message;
@@ -503,7 +503,7 @@ async function saveCurrentRunToExistingProfile() {
       return;
     }
     const run = await createSavedRun();
-    const saved = saveRunToProfile(profileId, run);
+    const saved = await saveRunToProfile(profileId, run);
     location.href = `/run.html?profile=${encodeURIComponent(profileId)}&run=${encodeURIComponent(saved.id)}`;
   } catch (error) {
     el.saveStatus.textContent = error.message;
