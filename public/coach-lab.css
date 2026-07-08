@@ -240,6 +240,23 @@ p {
   letter-spacing: 0;
 }
 
+.runner-name-form {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.runner-name-form input {
+  min-height: 34px;
+  padding: 8px 10px;
+}
+
+.runner-name-form button {
+  min-height: 34px;
+  padding: 8px 10px;
+}
+
 #statusPill {
   border: 1px solid rgba(143, 224, 107, 0.46);
   border-radius: 999px;

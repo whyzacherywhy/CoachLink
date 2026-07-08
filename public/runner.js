@@ -137,6 +137,12 @@ async function sendPoint(point) {
   });
 }
 
+function applySessionUpdate(session) {
+  if (session?.runnerName && document.activeElement !== el.name) {
+    el.name.value = session.runnerName;
+  }
+}
+
 function pointFromPosition(position) {
   const { latitude, longitude, accuracy, altitude, speed, heading } = position.coords;
   return {
@@ -248,6 +254,9 @@ el.hideMap.addEventListener("click", () => setMapVisible(false));
 const events = new EventSource(`/api/runner-events/${encodeURIComponent(sessionId)}`);
 events.addEventListener("open", () => {
   updateStatusBadges();
+});
+events.addEventListener("session", (event) => {
+  applySessionUpdate(JSON.parse(event.data));
 });
 events.addEventListener("presence", (event) => {
   const presence = JSON.parse(event.data);

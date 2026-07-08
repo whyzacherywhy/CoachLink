@@ -28,6 +28,8 @@ let lastSaveableSession = loadRunDraft(sessionId);
 
 const el = {
   runnerName: document.querySelector("#runnerName"),
+  runnerNameForm: document.querySelector("#runnerNameForm"),
+  runnerNameEdit: document.querySelector("#runnerNameEdit"),
   runnerAvatar: document.querySelector("#runnerAvatar"),
   statusPill: document.querySelector("#statusPill"),
   connectionState: document.querySelector("#connectionState"),
@@ -88,6 +90,11 @@ function updateConnectionUi(session) {
 
   el.trackingState.textContent = tracking ? "Tracking" : "Tracking off";
   el.trackingState.classList.toggle("is-tracking", tracking);
+}
+
+function syncRunnerNameInput(name) {
+  if (document.activeElement === el.runnerNameEdit) return;
+  el.runnerNameEdit.value = name === "Runner" ? "" : name;
 }
 
 function compassDirection(degrees) {
@@ -331,6 +338,7 @@ function drawSession(session) {
 
   updateConnectionUi(session);
   el.runnerName.textContent = name;
+  syncRunnerNameInput(name);
   el.runnerAvatar.textContent = initials(name);
   el.statusPill.textContent = session.status === "live" ? "LIVE" : (session.status || "IDLE").toUpperCase();
   el.runTime.textContent = formatDuration(elapsedSeconds);
@@ -392,6 +400,22 @@ async function sendCue(text) {
     body: JSON.stringify({ sessionId, text }),
   });
   if (!response.ok) throw new Error("Note failed");
+}
+
+async function updateRunnerName(event) {
+  event.preventDefault();
+  const runnerName = el.runnerNameEdit.value.trim();
+  if (!runnerName) return;
+
+  const response = await fetch("/api/runner-name", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ sessionId, runnerName }),
+  });
+  if (!response.ok) return;
+
+  const payload = await response.json();
+  drawSession(payload.session);
 }
 
 async function startEffortSplit() {
@@ -510,6 +534,7 @@ el.cueForm.addEventListener("submit", async (event) => {
   el.cueInput.value = "";
 });
 
+el.runnerNameForm.addEventListener("submit", updateRunnerName);
 el.startEffortSplit.addEventListener("click", startEffortSplit);
 el.saveRun.addEventListener("click", openSaveModal);
 el.closeSaveModal.addEventListener("click", closeSaveModal);

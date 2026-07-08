@@ -31,6 +31,7 @@ function createSession(id, previous = {}) {
   return {
     id,
     runnerName: previous.runnerName || "Runner",
+    runnerNameEditedByCoach: previous.runnerNameEditedByCoach || false,
     startedAt: null,
     lastPoint: null,
     points: [],
@@ -273,7 +274,9 @@ const server = http.createServer(async (req, res) => {
       const previousStatus = session.status;
       const isFirstPoint = !session.startedAt;
 
-      session.runnerName = body.runnerName || session.runnerName;
+      if (!session.runnerNameEditedByCoach) {
+        session.runnerName = body.runnerName || session.runnerName;
+      }
       session.startedAt ||= point.at;
       if (isFirstPoint) {
         session.events = [];
@@ -289,6 +292,20 @@ const server = http.createServer(async (req, res) => {
 
       broadcastCoach("session", serializeSession(session));
       return json(res, 200, { ok: true, session: serializeSession(session) });
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/runner-name") {
+      const body = await readBody(req);
+      const session = getSession(body.sessionId || "demo");
+      const runnerName = String(body.runnerName || "").trim().slice(0, 80);
+      if (!runnerName) return json(res, 400, { error: "Runner name is required." });
+
+      session.runnerName = runnerName;
+      session.runnerNameEditedByCoach = true;
+      const serialized = serializeSession(session);
+      broadcastCoach("session", serialized);
+      broadcastRunner(session.id, "session", serialized);
+      return json(res, 200, { ok: true, session: serialized });
     }
 
     if (req.method === "POST" && url.pathname === "/api/pause") {
