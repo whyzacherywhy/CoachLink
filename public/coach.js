@@ -33,9 +33,7 @@ const el = {
   connectionState: document.querySelector("#connectionState"),
   trackingState: document.querySelector("#trackingState"),
   runnerPresence: document.querySelector("#runnerPresence"),
-  trackingPresence: document.querySelector("#trackingPresence"),
   runTime: document.querySelector("#runTime"),
-  runTimeMonitor: document.querySelector("#runTimeMonitor"),
   distance: document.querySelector("#distance"),
   splitPace: document.querySelector("#splitPace"),
   averagePace: document.querySelector("#averagePace"),
@@ -70,7 +68,6 @@ const el = {
   heading: document.querySelector("#heading"),
   streetLayer: document.querySelector("#streetLayer"),
   terrainLayer: document.querySelector("#terrainLayer"),
-  layerName: document.querySelector("#layerName"),
 };
 
 const runnerUrl = `${location.origin}/runner?session=${encodeURIComponent(sessionId)}`;
@@ -91,7 +88,22 @@ function updateConnectionUi(session) {
 
   el.trackingState.textContent = tracking ? "Tracking" : "Tracking off";
   el.trackingState.classList.toggle("is-tracking", tracking);
-  el.trackingPresence.textContent = tracking ? "On" : "Off";
+}
+
+function compassDirection(degrees) {
+  if (!Number.isFinite(degrees)) return "--";
+  const directions = [
+    "North",
+    "North east",
+    "East",
+    "South east",
+    "South",
+    "South west",
+    "West",
+    "North west",
+  ];
+  const normalized = ((degrees % 360) + 360) % 360;
+  return directions[Math.round(normalized / 45) % directions.length];
 }
 
 function clearMap() {
@@ -322,7 +334,6 @@ function drawSession(session) {
   el.runnerAvatar.textContent = initials(name);
   el.statusPill.textContent = session.status === "live" ? "LIVE" : (session.status || "IDLE").toUpperCase();
   el.runTime.textContent = formatDuration(elapsedSeconds);
-  el.runTimeMonitor.textContent = formatDuration(elapsedSeconds);
   el.distance.textContent = `${stats.miles.toFixed(2)} mi`;
   el.splitPace.textContent = formatPace(stats.splitPace);
   el.averagePace.textContent = formatPace(stats.averagePace);
@@ -340,7 +351,7 @@ function drawSession(session) {
   el.effortDistance.textContent = `${effort.miles.toFixed(2)} mi`;
   el.effortMeters.textContent = `${Math.round(effort.meters)} m`;
   el.effortElapsed.textContent = formatDuration(effort.elapsedSeconds);
-  el.heading.textContent = last?.heading ? `${Math.round(last.heading)} deg` : "--";
+  el.heading.textContent = compassDirection(Number(last?.heading));
   el.mapReadout.textContent = last
     ? `${stats.miles.toFixed(2)} mi · ${formatPace(stats.splitPace)} mile split · ${formatPace(effort.pace)} coach split`
     : "Waiting for runner";
@@ -481,13 +492,11 @@ function setLayer(layer) {
     terrainLayer.addTo(map);
     el.terrainLayer.classList.add("active");
     el.streetLayer.classList.remove("active");
-    el.layerName.textContent = "Terrain";
   } else {
     map.removeLayer(terrainLayer);
     streetLayer.addTo(map);
     el.streetLayer.classList.add("active");
     el.terrainLayer.classList.remove("active");
-    el.layerName.textContent = "Street";
   }
   pathLine?.bringToFront();
   marker?.setZIndexOffset(1000);
@@ -511,10 +520,6 @@ el.saveNewProfile.addEventListener("click", saveCurrentRunToNewProfile);
 el.saveExistingProfile.addEventListener("click", saveCurrentRunToExistingProfile);
 el.streetLayer.addEventListener("click", () => setLayer("street"));
 el.terrainLayer.addEventListener("click", () => setLayer("terrain"));
-
-document.querySelectorAll("[data-cue]").forEach((button) => {
-  button.addEventListener("click", () => sendCue(button.dataset.cue));
-});
 
 el.copyLink.addEventListener("click", async () => {
   await navigator.clipboard.writeText(runnerUrl);
@@ -540,7 +545,6 @@ setInterval(() => {
   if (!activeSession) return;
   const elapsedSeconds = sessionElapsedSeconds(activeSession);
   el.runTime.textContent = formatDuration(elapsedSeconds);
-  el.runTimeMonitor.textContent = formatDuration(elapsedSeconds);
   const liveEffortSplit = liveCoachSplit(activeSession);
   const effort = effortSplitStats(activeSession.points || [], liveEffortSplit);
   const stats = sessionStats(activeSession.points || [], activeSession.startedAt, elapsedSeconds);
