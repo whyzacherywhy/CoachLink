@@ -995,6 +995,40 @@ p {
   font: inherit;
 }
 
+.receipt-builder {
+  display: grid;
+  gap: 14px;
+}
+
+.receipt-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.receipt-fields label {
+  display: grid;
+  gap: 8px;
+}
+
+.receipt-fields textarea {
+  width: 100%;
+  min-height: 140px;
+  resize: vertical;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #080d12;
+  color: var(--text);
+  padding: 12px;
+  font: inherit;
+}
+
+.receipt-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .summary-tables {
   margin-top: 14px;
   display: grid;
@@ -1165,6 +1199,7 @@ p {
   .profile-fields,
   .summary-grid,
   .summary-tables,
+  .receipt-fields,
   .save-choices {
     grid-template-columns: 1fr;
   }

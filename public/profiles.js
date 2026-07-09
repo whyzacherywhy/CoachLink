@@ -253,6 +253,218 @@ async function renderRunPage() {
   renderMileTable(run);
   renderSplitTable(run);
   renderSummaryHistory(run);
+  setupReceiptDownload(profile, run, notes);
+}
+
+function setupReceiptDownload(profile, run, notesInput) {
+  const notes = document.querySelector("#receiptNotes");
+  const takeaway = document.querySelector("#receiptTakeaway");
+  const jpgButton = document.querySelector("#downloadReceiptJpg");
+  const pngButton = document.querySelector("#downloadReceiptPng");
+  if (!notes || !takeaway || !jpgButton || !pngButton) return;
+
+  notes.value = notesInput.value || "";
+
+  jpgButton.addEventListener("click", () => downloadReceipt(profile, run, notes, takeaway, "jpg"));
+  pngButton.addEventListener("click", () => downloadReceipt(profile, run, notes, takeaway, "png"));
+}
+
+function downloadReceipt(profile, run, notes, takeaway, format) {
+  if (!notes.value.trim()) {
+    alert("Add coach notes/reflection before downloading the receipt.");
+    notes.focus();
+    return;
+  }
+  if (!takeaway.value.trim()) {
+    alert("Add a coach takeaway before downloading the receipt.");
+    takeaway.focus();
+    return;
+  }
+
+  const canvas = drawReceiptCanvas(profile, run, {
+    notes: notes.value.trim(),
+    takeaway: takeaway.value.trim(),
+  });
+  const link = document.createElement("a");
+  const safeName = (profile.name || "runner").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  link.download = `coachlink-${safeName || "runner"}-${run.dateLabel || "receipt"}.${format === "jpg" ? "jpg" : "png"}`;
+  link.href = format === "jpg" ? canvas.toDataURL("image/jpeg", 0.82) : canvas.toDataURL("image/png");
+  link.click();
+}
+
+function drawReceiptCanvas(profile, run, receipt) {
+  const width = 720;
+  const draft = document.createElement("canvas");
+  draft.width = width;
+  draft.height = 6000;
+  const ctx = draft.getContext("2d");
+  const margin = 54;
+  let y = 54;
+
+  ctx.fillStyle = "#f7f3df";
+  ctx.fillRect(0, 0, draft.width, draft.height);
+  ctx.fillStyle = "#111";
+  ctx.strokeStyle = "#111";
+  ctx.lineWidth = 2;
+  ctx.font = "700 58px Courier New, monospace";
+  ctx.textAlign = "center";
+  ctx.fillText("COACHLINK", width / 2, y);
+  y += 28;
+  y = receiptDivider(ctx, y, width, margin);
+
+  ctx.textAlign = "left";
+  y = receiptLine(ctx, "RUNNER", profile.name || "Runner", y, margin);
+  y = receiptLine(ctx, "DATE", run.dateLabel || fullDate(run.startedAt), y, margin);
+  y = receiptLine(ctx, "TIME", formatTime(run.startedAt), y, margin);
+  y = receiptLine(ctx, "DISTANCE", `${run.distanceMiles.toFixed(2)} mi`, y, margin);
+  y = receiptLine(ctx, "TOTAL TIME", formatDuration(run.elapsedSeconds), y, margin);
+  y = receiptLine(ctx, "AVG PACE", formatPace(run.averagePace), y, margin);
+  y = receiptLine(
+    ctx,
+    "ELEVATION",
+    `+${Math.round(run.elevationGainFeet)} / -${Math.round(run.elevationLossFeet)} ft`,
+    y,
+    margin,
+  );
+  y = receiptDivider(ctx, y, width, margin);
+
+  y = receiptHeading(ctx, "ROUTE MAP", y, margin);
+  y = receiptRoute(ctx, run.route || [], y, margin, width - margin * 2);
+  y = receiptDivider(ctx, y, width, margin);
+
+  y = receiptHeading(ctx, "MILE SPLITS", y, margin);
+  y = receiptSplits(ctx, run.mileSplits || [], y, margin, (mile) => [
+    mile.label || `Mile ${mile.number}`,
+    `${formatDuration(mile.seconds)} / ${formatPace(mile.pace)} / ${signedFeet(mile.elevationFeet)}`,
+  ]);
+  y = receiptDivider(ctx, y, width, margin);
+
+  y = receiptHeading(ctx, "COACH SPLITS", y, margin);
+  y = receiptSplits(ctx, run.coachSplits || [], y, margin, (split) => [
+    `Split ${split.number}`,
+    `${formatDuration(split.elapsedSeconds)} / ${split.distanceMiles.toFixed(2)} mi / ${formatPace(split.pace)}`,
+  ]);
+  y = receiptDivider(ctx, y, width, margin);
+
+  y = receiptBlock(ctx, "COACH NOTES / REFLECTION", receipt.notes, y, margin, width);
+  y = receiptDivider(ctx, y, width, margin);
+  y = receiptBlock(ctx, "COACH TAKEAWAY", receipt.takeaway, y, margin, width);
+  y = receiptDivider(ctx, y, width, margin);
+
+  ctx.font = "700 24px Courier New, monospace";
+  ctx.textAlign = "center";
+  ctx.fillText("END RECEIPT", width / 2, y + 28);
+  y += 70;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = Math.min(y, draft.height);
+  canvas.getContext("2d").drawImage(draft, 0, 0);
+  return canvas;
+}
+
+function receiptDivider(ctx, y, width, margin) {
+  ctx.font = "700 24px Courier New, monospace";
+  ctx.textAlign = "left";
+  ctx.fillText("-".repeat(43), margin, y + 28);
+  return y + 54;
+}
+
+function receiptLine(ctx, label, value, y, margin) {
+  ctx.font = "700 26px Courier New, monospace";
+  ctx.textAlign = "left";
+  ctx.fillText(label, margin, y);
+  ctx.textAlign = "right";
+  ctx.fillText(String(value || "--"), 720 - margin, y);
+  return y + 38;
+}
+
+function receiptHeading(ctx, text, y, margin) {
+  ctx.font = "900 30px Courier New, monospace";
+  ctx.textAlign = "left";
+  ctx.fillText(text, margin, y);
+  return y + 38;
+}
+
+function receiptRoute(ctx, route, y, margin, mapWidth) {
+  const mapHeight = 190;
+  ctx.strokeRect(margin, y, mapWidth, mapHeight);
+  if (route.length < 2) {
+    ctx.font = "700 24px Courier New, monospace";
+    ctx.textAlign = "center";
+    ctx.fillText("NO ROUTE", margin + mapWidth / 2, y + mapHeight / 2);
+    ctx.textAlign = "left";
+    return y + mapHeight + 26;
+  }
+
+  const lats = route.map((point) => point.lat);
+  const lngs = route.map((point) => point.lng);
+  const minLat = Math.min(...lats);
+  const maxLat = Math.max(...lats);
+  const minLng = Math.min(...lngs);
+  const maxLng = Math.max(...lngs);
+  const latRange = maxLat - minLat || 0.0001;
+  const lngRange = maxLng - minLng || 0.0001;
+  const pad = 18;
+
+  ctx.beginPath();
+  route.forEach((point, index) => {
+    const x = margin + pad + ((point.lng - minLng) / lngRange) * (mapWidth - pad * 2);
+    const routeY = y + pad + (1 - (point.lat - minLat) / latRange) * (mapHeight - pad * 2);
+    if (index === 0) ctx.moveTo(x, routeY);
+    else ctx.lineTo(x, routeY);
+  });
+  ctx.lineWidth = 5;
+  ctx.stroke();
+  ctx.lineWidth = 2;
+  ctx.font = "700 18px Courier New, monospace";
+  ctx.fillText("START", margin + 10, y + mapHeight + 20);
+  ctx.textAlign = "right";
+  ctx.fillText("FINISH", margin + mapWidth - 10, y + mapHeight + 20);
+  ctx.textAlign = "left";
+  return y + mapHeight + 36;
+}
+
+function receiptSplits(ctx, rows, y, margin, mapper) {
+  if (!rows.length) {
+    ctx.font = "700 24px Courier New, monospace";
+    ctx.fillText("No data logged", margin, y);
+    return y + 36;
+  }
+  for (const row of rows) {
+    const [label, value] = mapper(row);
+    y = receiptLine(ctx, label, value, y, margin);
+  }
+  return y;
+}
+
+function receiptBlock(ctx, heading, text, y, margin, width) {
+  y = receiptHeading(ctx, heading, y, margin);
+  ctx.font = "700 24px Courier New, monospace";
+  ctx.textAlign = "left";
+  const lines = wrapReceiptText(ctx, text, width - margin * 2);
+  for (const line of lines) {
+    ctx.fillText(line, margin, y);
+    y += 31;
+  }
+  return y;
+}
+
+function wrapReceiptText(ctx, text, maxWidth) {
+  const words = String(text || "").split(/\s+/).filter(Boolean);
+  const lines = [];
+  let line = "";
+  for (const word of words) {
+    const next = line ? `${line} ${word}` : word;
+    if (ctx.measureText(next).width > maxWidth && line) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = next;
+    }
+  }
+  if (line) lines.push(line);
+  return lines.length ? lines : ["--"];
 }
 
 function weatherSummary(weather) {
