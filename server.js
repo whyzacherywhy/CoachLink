@@ -693,6 +693,7 @@ const server = http.createServer(async (req, res) => {
       if (!session) return json(res, 404, { error: "Session not found." });
       const now = Date.now();
       const targetMeters = Number(body.targetMeters || 0);
+      const completedTargetMeters = Number.isFinite(targetMeters) && targetMeters > 0 ? targetMeters : null;
       const completedSplits = session.effortSplits || [];
       const current = session.effortSplit;
       const canCompleteFromStart = !current && (session.startedAt || session.points[0]?.at);
@@ -700,6 +701,9 @@ const server = http.createServer(async (req, res) => {
       if (current || canCompleteFromStart) {
         const startedAt = current?.startedAt || session.startedAt || session.points[0].at;
         const elapsed = current ? effortElapsedMs(current, now) : elapsedMs(session, now);
+        if (elapsed < 2000) {
+          return json(res, 200, { ok: true, session: serializeSession(session) });
+        }
         completedSplits.push({
           number: current?.number || completedSplits.length + 1,
           startedAt,
@@ -707,7 +711,7 @@ const server = http.createServer(async (req, res) => {
           startedPointIndex: current?.startedPointIndex || 0,
           endPointIndex: session.points.length,
           elapsedMs: elapsed,
-          targetMeters: Number.isFinite(targetMeters) && targetMeters > 0 ? targetMeters : current?.targetMeters || null,
+          targetMeters: completedTargetMeters || current?.targetMeters || null,
         });
       }
 
@@ -718,7 +722,7 @@ const server = http.createServer(async (req, res) => {
         startedPointIndex: session.points.length,
         elapsedMs: 0,
         trackingStartedAt: session.status === "live" ? now : null,
-        targetMeters: Number.isFinite(targetMeters) && targetMeters > 0 ? targetMeters : null,
+        targetMeters: null,
       };
 
       broadcastCoach("session", serializeSession(session));

@@ -27,6 +27,7 @@ let activeSession = { id: sessionId, points: [], cues: [], status: "idle" };
 let lastSaveableSession = loadRunDraft(sessionId);
 let selectedTrackMeters = 200;
 let holdEndedSession = false;
+let splitRequestPending = false;
 
 const el = {
   runnerName: document.querySelector("#runnerName"),
@@ -173,12 +174,7 @@ function snapshotForSave(session) {
 
 function displayedCoachSplit(session) {
   const split = liveCoachSplit(session);
-  if (!split) return null;
-  if (session.mode !== "track") return split;
-  return {
-    ...split,
-    targetMeters: Number(split.targetMeters || selectedTrackMeters),
-  };
+  return split || null;
 }
 
 function initials(name) {
@@ -432,15 +428,23 @@ async function updateRunnerName(event) {
 }
 
 async function startEffortSplit() {
-  const response = await fetch("/api/effort-split", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      sessionId,
-      targetMeters: activeSession.mode === "track" ? selectedTrackMeters : null,
-    }),
-  });
-  if (!response.ok) throw new Error("Effort split failed");
+  if (splitRequestPending) return;
+  splitRequestPending = true;
+  el.startEffortSplit.disabled = true;
+  try {
+    const response = await fetch("/api/effort-split", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        sessionId,
+        targetMeters: activeSession.mode === "track" ? selectedTrackMeters : null,
+      }),
+    });
+    if (!response.ok) throw new Error("Effort split failed");
+  } finally {
+    splitRequestPending = false;
+    el.startEffortSplit.disabled = false;
+  }
 }
 
 async function populateProfileSelect() {
