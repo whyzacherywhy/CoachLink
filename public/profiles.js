@@ -276,7 +276,7 @@ function downloadReceipt(profile, run, notes, takeaway, format) {
     return;
   }
   if (!takeaway.value.trim()) {
-    alert("Add a coach takeaway before downloading the receipt.");
+    alert("Add homework for the runner before downloading the receipt.");
     takeaway.focus();
     return;
   }
@@ -348,7 +348,7 @@ function drawReceiptCanvas(profile, run, receipt) {
 
   y = receiptBlock(ctx, "COACH NOTES / REFLECTION", receipt.notes, y, margin, width);
   y = receiptDivider(ctx, y, width, margin);
-  y = receiptBlock(ctx, "COACH TAKEAWAY", receipt.takeaway, y, margin, width);
+  y = receiptBlock(ctx, "HOMEWORK FOR RUNNER", receipt.takeaway, y, margin, width);
   y = receiptDivider(ctx, y, width, margin);
 
   ctx.font = "700 24px Courier New, monospace";
