@@ -17,7 +17,6 @@ const el = {
   start: document.querySelector("#startBtn"),
   pause: document.querySelector("#pauseBtn"),
   stop: document.querySelector("#stopBtn"),
-  demo: document.querySelector("#demoBtn"),
   mapToggle: document.querySelector("#mapToggle"),
   hideMap: document.querySelector("#hideMap"),
   mapPanel: document.querySelector("#runnerMapPanel"),
@@ -247,7 +246,6 @@ function startDemo() {
 el.start.addEventListener("click", startGps);
 el.pause.addEventListener("click", pauseRun);
 el.stop.addEventListener("click", stopRun);
-el.demo.addEventListener("click", startDemo);
 el.mapToggle.addEventListener("click", () => setMapVisible(el.mapPanel.classList.contains("is-hidden")));
 el.hideMap.addEventListener("click", () => setMapVisible(false));
 

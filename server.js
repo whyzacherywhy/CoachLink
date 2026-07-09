@@ -4,6 +4,7 @@ import { extname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   createProfile,
+  deleteRun,
   getProfile,
   getRun,
   hasDatabase,
@@ -268,6 +269,13 @@ const server = http.createServer(async (req, res) => {
     }
 
     const profileRunMatch = url.pathname.match(/^\/api\/profiles\/([^/]+)\/runs\/([^/]+)$/);
+    if (profileRunMatch && req.method === "DELETE") {
+      if (!hasDatabase) return databaseUnavailable(res);
+      const deleted = await deleteRun(profileRunMatch[1], profileRunMatch[2]);
+      if (!deleted) return json(res, 404, { error: "Run not found." });
+      return json(res, 200, { ok: true });
+    }
+
     if (profileRunMatch && req.method === "GET") {
       if (!hasDatabase) return databaseUnavailable(res);
       const run = await getRun(profileRunMatch[1], profileRunMatch[2]);

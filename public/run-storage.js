@@ -164,6 +164,29 @@ function updateLocalRunNotes(profileIdValue, runIdValue, notes) {
   return run;
 }
 
+async function deleteRunFromProfile(profileIdValue, runIdValue) {
+  try {
+    await apiJson(`/api/profiles/${encodeURIComponent(profileIdValue)}/runs/${encodeURIComponent(runIdValue)}`, {
+      method: "DELETE",
+    });
+    return true;
+  } catch {
+    return deleteLocalRunFromProfile(profileIdValue, runIdValue);
+  }
+}
+
+function deleteLocalRunFromProfile(profileIdValue, runIdValue) {
+  const profiles = loadLocalProfiles();
+  const profile = profiles.find((item) => item.id === profileIdValue);
+  if (!profile?.runs) return false;
+  const before = profile.runs.length;
+  profile.runs = profile.runs.filter((run) => run.id !== runIdValue);
+  if (profile.runs.length === before) return false;
+  profile.updatedAt = Date.now();
+  saveLocalProfiles(profiles);
+  return true;
+}
+
 function saveRunDraft(sessionId, session) {
   if (!session?.points?.length) return;
   localStorage.setItem(`${runDraftPrefix}${sessionId}`, JSON.stringify(session));

@@ -59,16 +59,35 @@ async function renderProfilePage() {
   }
 
   for (const run of profile.runs) {
-    const row = document.createElement("a");
+    const row = document.createElement("div");
     row.className = "run-row";
-    row.href = `/run.html?profile=${encodeURIComponent(profile.id)}&run=${encodeURIComponent(run.id)}`;
     row.innerHTML = `
-      <strong>${run.dateLabel || fullDate(run.startedAt)}</strong>
-      <span>${run.distanceMiles.toFixed(2)} mi</span>
-      <span>${formatPace(run.averagePace)}</span>
+      <a href="/run.html?profile=${encodeURIComponent(profile.id)}&run=${encodeURIComponent(run.id)}">
+        <strong>${run.dateLabel || fullDate(run.startedAt)}</strong>
+        <span>${run.distanceMiles.toFixed(2)} mi</span>
+        <span>${formatPace(run.averagePace)}</span>
+      </a>
+      <button class="delete-run" type="button" data-run-id="${run.id}">Delete</button>
     `;
     runsList.append(row);
   }
+
+  runsList.querySelectorAll(".delete-run").forEach((button) => {
+    button.addEventListener("click", async () => {
+      if (!confirm("Delete this run entry? This cannot be undone.")) return;
+      button.disabled = true;
+      const deleted = await deleteRunFromProfile(profile.id, button.dataset.runId);
+      if (deleted) {
+        button.closest(".run-row")?.remove();
+        if (!runsList.querySelector(".run-row")) {
+          runsList.append(emptyState("No runs saved to this profile yet."));
+        }
+      } else {
+        button.disabled = false;
+        alert("Could not delete this run.");
+      }
+    });
+  });
 }
 
 function renderProfileOverview(profile) {

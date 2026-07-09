@@ -345,3 +345,15 @@ export async function updateRunNotes(profileId, runId, notes) {
   );
   return result.rows[0] ? mapRunSummary(result.rows[0]) : null;
 }
+
+export async function deleteRun(profileId, runId) {
+  const result = await query(
+    `delete from run_entries
+     where profile_id = $1 and id = $2
+     returning id`,
+    [profileId, runId],
+  );
+  if (!result.rows[0]) return false;
+  await query("update runner_profiles set updated_at = now() where id = $1", [profileId]);
+  return true;
+}
