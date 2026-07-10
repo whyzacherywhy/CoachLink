@@ -297,34 +297,34 @@ function drawReceiptGhost(ctx, x, y) {
   ctx.translate(x, y);
   ctx.fillStyle = "#111";
   ctx.beginPath();
-  ctx.moveTo(8, 48);
-  ctx.bezierCurveTo(6, 41, 8, 34, 13, 28);
-  ctx.bezierCurveTo(13, 11, 24, 0, 38, 0);
-  ctx.bezierCurveTo(52, 0, 63, 11, 63, 28);
-  ctx.bezierCurveTo(70, 30, 73, 37, 68, 44);
-  ctx.bezierCurveTo(64, 50, 58, 53, 54, 58);
-  ctx.bezierCurveTo(55, 65, 50, 71, 42, 68);
-  ctx.bezierCurveTo(38, 66, 35, 66, 31, 68);
-  ctx.bezierCurveTo(24, 71, 18, 66, 19, 58);
-  ctx.bezierCurveTo(15, 54, 10, 52, 8, 48);
+  ctx.moveTo(8, 51);
+  ctx.bezierCurveTo(10, 43, 10, 34, 10, 26);
+  ctx.bezierCurveTo(10, 10, 22, 0, 38, 0);
+  ctx.bezierCurveTo(54, 0, 66, 10, 66, 26);
+  ctx.bezierCurveTo(66, 34, 66, 43, 68, 51);
+  ctx.bezierCurveTo(72, 67, 62, 75, 49, 66);
+  ctx.bezierCurveTo(42, 61, 35, 61, 28, 66);
+  ctx.bezierCurveTo(15, 75, 4, 67, 8, 51);
   ctx.closePath();
   ctx.fill();
 
   ctx.fillStyle = "#f7f3df";
   ctx.beginPath();
-  ctx.ellipse(30, 29, 4, 6, 0, 0, Math.PI * 2);
-  ctx.ellipse(46, 29, 4, 6, 0, 0, Math.PI * 2);
+  ctx.ellipse(30, 29, 5, 8, 0, 0, Math.PI * 2);
+  ctx.ellipse(47, 29, 5, 8, 0, 0, Math.PI * 2);
   ctx.fill();
 
   ctx.beginPath();
-  ctx.arc(38, 40, 9, 0.08 * Math.PI, 0.92 * Math.PI);
-  ctx.lineTo(29, 40);
+  ctx.moveTo(30, 43);
+  ctx.quadraticCurveTo(38, 51, 48, 43);
+  ctx.quadraticCurveTo(47, 60, 38, 60);
+  ctx.quadraticCurveTo(31, 60, 30, 43);
   ctx.closePath();
   ctx.fill();
 
   ctx.fillStyle = "#111";
   ctx.beginPath();
-  ctx.ellipse(34, 47, 7, 2.8, 0.35, 0, Math.PI * 2);
+  ctx.ellipse(36, 55, 7, 2.5, 0.35, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 }
