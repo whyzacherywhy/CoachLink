@@ -1,6 +1,6 @@
-# CoachLink
+# Motion Mirror
 
-CoachLink is a web prototype for live virtual run coaching.
+Motion Mirror is a web prototype for live virtual run coaching.
 
 It includes:
 

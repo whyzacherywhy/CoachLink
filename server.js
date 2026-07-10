@@ -780,7 +780,7 @@ const server = http.createServer(async (req, res) => {
 initDatabase()
   .then(() => {
     server.listen(port, host, () => {
-      console.log(`Coach Live Map is running on ${host}:${port}`);
+      console.log(`Motion Mirror is running on ${host}:${port}`);
     });
   })
   .catch((error) => {

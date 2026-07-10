@@ -26,7 +26,7 @@ async function loadAuthState() {
   el.nameField.hidden = !isSetup;
   el.title.textContent = isSetup ? "Create coach login" : "Coach login";
   el.subtitle.textContent = isSetup
-    ? "Make the private coach account for this CoachLink workspace."
+    ? "Make the private coach account for this Motion Mirror workspace."
     : "Sign in to view private profiles and saved runs.";
   el.submit.textContent = isSetup ? "Create login" : "Sign in";
 

@@ -113,7 +113,7 @@ function mapCoach(row) {
 }
 
 async function ensureDefaultCoach() {
-  const email = process.env.COACH_EMAIL || "coach@coachlink.local";
+  const email = process.env.COACH_EMAIL || "coach@motionmirror.local";
   const displayName = process.env.COACH_NAME || "Coach";
   await query(
     `insert into coaches (email, display_name)
@@ -161,7 +161,7 @@ export async function saveCoachLogin({ email, displayName, passwordHash }) {
 }
 
 export async function suggestedCoach() {
-  const email = process.env.COACH_EMAIL || "coach@coachlink.local";
+  const email = process.env.COACH_EMAIL || "coach@motionmirror.local";
   const displayName = process.env.COACH_NAME || "Coach";
   return { email, displayName };
 }

@@ -287,9 +287,37 @@ function downloadReceipt(profile, run, notes, takeaway, format) {
   });
   const link = document.createElement("a");
   const safeName = (profile.name || "runner").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-  link.download = `coachlink-${safeName || "runner"}-${run.dateLabel || "receipt"}.${format === "jpg" ? "jpg" : "png"}`;
+  link.download = `motion-mirror-${safeName || "runner"}-${run.dateLabel || "receipt"}.${format === "jpg" ? "jpg" : "png"}`;
   link.href = format === "jpg" ? canvas.toDataURL("image/jpeg", 0.82) : canvas.toDataURL("image/png");
   link.click();
+}
+
+function drawReceiptGhost(ctx, x, y) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.fillStyle = "#f7f3df";
+  ctx.strokeStyle = "#111";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(0, 34);
+  ctx.bezierCurveTo(0, 14, 11, 0, 28, 0);
+  ctx.bezierCurveTo(45, 0, 56, 14, 56, 34);
+  ctx.lineTo(56, 48);
+  ctx.lineTo(47, 41);
+  ctx.lineTo(38, 48);
+  ctx.lineTo(28, 41);
+  ctx.lineTo(18, 48);
+  ctx.lineTo(9, 41);
+  ctx.lineTo(0, 48);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = "#111";
+  ctx.beginPath();
+  ctx.arc(20, 24, 4, 0, Math.PI * 2);
+  ctx.arc(36, 24, 4, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
 }
 
 function drawReceiptCanvas(profile, run, receipt) {
@@ -306,9 +334,11 @@ function drawReceiptCanvas(profile, run, receipt) {
   ctx.fillStyle = "#111";
   ctx.strokeStyle = "#111";
   ctx.lineWidth = 2;
-  ctx.font = "700 58px Courier New, monospace";
+  ctx.font = "700 44px Courier New, monospace";
   ctx.textAlign = "center";
-  ctx.fillText("COACHLINK", width / 2, y);
+  drawReceiptGhost(ctx, 64, 12);
+  drawReceiptGhost(ctx, width - 120, 12);
+  ctx.fillText("MOTION MIRROR", width / 2, y);
   y += 28;
   y = receiptDivider(ctx, y, width, margin);
 

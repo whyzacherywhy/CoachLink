@@ -1,4 +1,4 @@
-# Coach Live Map: Hosted Web App Plan
+# Motion Mirror: Hosted Web App Plan
 
 ## Goal
 
