@@ -143,7 +143,13 @@ function saveLocalRunToProfile(profileIdValue, run) {
   const profile = profiles.find((item) => item.id === profileIdValue);
   if (!profile) return null;
   profile.runs ||= [];
-  profile.runs.unshift({ ...run, id: run.id || runId(), savedAt: Date.now(), notes: run.notes || "" });
+  profile.runs.unshift({
+    ...run,
+    id: run.id || runId(),
+    savedAt: Date.now(),
+    notes: run.notes || "",
+    homework: run.homework || "",
+  });
   profile.runs.sort((a, b) => (b.startedAt || b.savedAt || 0) - (a.startedAt || a.savedAt || 0));
   saveLocalProfiles(profiles);
   return profile.runs[0];
@@ -161,27 +167,28 @@ async function loadRun(profileIdValue, runIdValue) {
   }
 }
 
-async function updateRunNotes(profileIdValue, runIdValue, notes) {
+async function updateRunNotes(profileIdValue, runIdValue, notes, homework = "") {
   try {
     const payload = await apiJson(
       `/api/profiles/${encodeURIComponent(profileIdValue)}/runs/${encodeURIComponent(runIdValue)}/notes`,
       {
         method: "PATCH",
-        body: JSON.stringify({ notes }),
+        body: JSON.stringify({ notes, homework }),
       },
     );
     return payload.run;
   } catch {
-    return updateLocalRunNotes(profileIdValue, runIdValue, notes);
+    return updateLocalRunNotes(profileIdValue, runIdValue, notes, homework);
   }
 }
 
-function updateLocalRunNotes(profileIdValue, runIdValue, notes) {
+function updateLocalRunNotes(profileIdValue, runIdValue, notes, homework = "") {
   const profiles = loadLocalProfiles();
   const profile = profiles.find((item) => item.id === profileIdValue);
   const run = profile?.runs?.find((item) => item.id === runIdValue);
   if (!run) return null;
   run.notes = notes;
+  run.homework = homework;
   run.notesUpdatedAt = Date.now();
   saveLocalProfiles(profiles);
   return run;
@@ -426,6 +433,7 @@ function buildRunSummary(session, weather) {
     })),
     history: [],
     notes: "",
+    homework: "",
   };
   summary.history = buildHistoryRows(session, summary);
   return summary;

@@ -480,7 +480,13 @@ const server = http.createServer(async (req, res) => {
       if (!hasDatabase) return databaseUnavailable(res);
       if (!coach) return authRequired(res);
       const body = await readBody(req);
-      const run = await updateRunNotes(profileRunNotesMatch[1], profileRunNotesMatch[2], coach.id, body.notes || "");
+      const run = await updateRunNotes(
+        profileRunNotesMatch[1],
+        profileRunNotesMatch[2],
+        coach.id,
+        body.notes || "",
+        body.homework || "",
+      );
       if (!run) return json(res, 404, { error: "Run not found." });
       return json(res, 200, { run });
     }

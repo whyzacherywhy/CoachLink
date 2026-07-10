@@ -87,6 +87,7 @@ function mapRunSummary(row) {
     elevationLossFeet: Number(row.elevation_loss_feet || 0),
     weather: row.weather || {},
     notes: row.notes || "",
+    homework: row.homework || "",
     savedAt: msDate(row.created_at),
   };
 }
@@ -362,9 +363,9 @@ export async function saveRun(profileId, coachId, run) {
       `insert into run_entries (
          profile_id, title, date_label, started_at, ended_at, distance_miles,
          elapsed_seconds, average_pace, elevation_gain_feet, elevation_loss_feet,
-         weather, notes
+         weather, notes, homework
        )
-       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
        returning *`,
       [
         profileId,
@@ -379,6 +380,7 @@ export async function saveRun(profileId, coachId, run) {
         Math.round(run.elevationLossFeet || 0),
         JSON.stringify(run.weather || {}),
         run.notes || "",
+        run.homework || "",
       ],
     );
     const saved = inserted.rows[0];
@@ -446,14 +448,14 @@ export async function saveRun(profileId, coachId, run) {
   });
 }
 
-export async function updateRunNotes(profileId, runId, coachId, notes) {
+export async function updateRunNotes(profileId, runId, coachId, notes, homework) {
   const result = await query(
     `update run_entries re
-     set notes = $3, updated_at = now()
+     set notes = $3, homework = $4, updated_at = now()
      from runner_profiles rp
-     where re.profile_id = $1 and re.id = $2 and re.profile_id = rp.id and rp.coach_id = $4
+     where re.profile_id = $1 and re.id = $2 and re.profile_id = rp.id and rp.coach_id = $5
      returning re.*`,
-    [profileId, runId, notes || "", coachId],
+    [profileId, runId, notes || "", homework || "", coachId],
   );
   return result.rows[0] ? mapRunSummary(result.rows[0]) : null;
 }

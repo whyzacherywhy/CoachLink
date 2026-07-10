@@ -227,6 +227,10 @@ async function renderRunPage() {
 
   const notes = document.querySelector("#runNotes");
   const notesButton = document.querySelector("#saveNotes");
+  const receiptNotes = document.querySelector("#receiptNotes");
+  const receiptHomework = document.querySelector("#receiptTakeaway");
+  const receiptNotesButton = document.querySelector("#saveReceiptNotes");
+  const receiptHomeworkButton = document.querySelector("#saveReceiptHomework");
   let notesEditing = false;
   notes.value = run.notes || "";
   setNotesEditing(false);
@@ -236,7 +240,10 @@ async function renderRunPage() {
       notes.focus();
       return;
     }
-    await updateRunNotes(profile.id, run.id, notes.value);
+    await updateRunNotes(profile.id, run.id, notes.value, receiptHomework?.value || run.homework || "");
+    run.notes = notes.value;
+    run.homework = receiptHomework?.value || run.homework || "";
+    if (receiptNotes) receiptNotes.value = run.notes;
     setNotesEditing(false);
     notesButton.textContent = "Saved";
     setTimeout(() => (notesButton.textContent = "Edit notes"), 900);
@@ -253,20 +260,72 @@ async function renderRunPage() {
   renderMileTable(run);
   renderSplitTable(run);
   renderSummaryHistory(run);
-  setupReceiptDownload(profile, run, notes);
+  setupReceiptDownload(profile, run, {
+    notesInput: notes,
+    receiptNotes,
+    receiptHomework,
+    receiptNotesButton,
+    receiptHomeworkButton,
+  });
 }
 
-function setupReceiptDownload(profile, run, notesInput) {
-  const notes = document.querySelector("#receiptNotes");
-  const takeaway = document.querySelector("#receiptTakeaway");
+function setupReceiptDownload(profile, run, fields) {
+  const notes = fields.receiptNotes;
+  const takeaway = fields.receiptHomework;
   const jpgButton = document.querySelector("#downloadReceiptJpg");
   const pngButton = document.querySelector("#downloadReceiptPng");
   if (!notes || !takeaway || !jpgButton || !pngButton) return;
 
-  notes.value = notesInput.value || "";
+  notes.value = fields.notesInput.value || run.notes || "";
+  takeaway.value = run.homework || "";
+  setupSavedTextBox({
+    textarea: notes,
+    button: fields.receiptNotesButton,
+    editLabel: "Edit notes",
+    saveLabel: "Save notes",
+    onSave: async () => {
+      fields.notesInput.value = notes.value;
+      run.notes = notes.value;
+      await updateRunNotes(profile.id, run.id, notes.value, takeaway.value);
+    },
+  });
+  setupSavedTextBox({
+    textarea: takeaway,
+    button: fields.receiptHomeworkButton,
+    editLabel: "Edit homework",
+    saveLabel: "Save homework",
+    onSave: async () => {
+      run.homework = takeaway.value;
+      await updateRunNotes(profile.id, run.id, notes.value, takeaway.value);
+    },
+  });
 
   jpgButton.addEventListener("click", () => downloadReceipt(profile, run, notes, takeaway, "jpg"));
   pngButton.addEventListener("click", () => downloadReceipt(profile, run, notes, takeaway, "png"));
+}
+
+function setupSavedTextBox({ textarea, button, editLabel, saveLabel, onSave }) {
+  if (!textarea || !button) return;
+  let editing = false;
+  setEditing(false);
+  button.addEventListener("click", async () => {
+    if (!editing) {
+      setEditing(true);
+      textarea.focus();
+      return;
+    }
+    await onSave();
+    setEditing(false);
+    button.textContent = "Saved";
+    setTimeout(() => (button.textContent = editLabel), 900);
+  });
+
+  function setEditing(nextValue) {
+    editing = nextValue;
+    textarea.readOnly = !editing;
+    textarea.classList.toggle("is-editing", editing);
+    button.textContent = editing ? saveLabel : editLabel;
+  }
 }
 
 function downloadReceipt(profile, run, notes, takeaway, format) {
@@ -295,7 +354,7 @@ function downloadReceipt(profile, run, notes, takeaway, format) {
 function drawReceiptGhost(ctx, x, y) {
   ctx.save();
   ctx.translate(x, y);
-  ctx.fillStyle = "#111";
+  ctx.fillStyle = "#06183a";
   ctx.beginPath();
   ctx.moveTo(8, 51);
   ctx.bezierCurveTo(10, 43, 10, 34, 10, 26);
@@ -308,7 +367,7 @@ function drawReceiptGhost(ctx, x, y) {
   ctx.closePath();
   ctx.fill();
 
-  ctx.fillStyle = "#f7f3df";
+  ctx.fillStyle = "#fbf5df";
   ctx.beginPath();
   ctx.ellipse(30, 29, 5, 8, 0, 0, Math.PI * 2);
   ctx.ellipse(47, 29, 5, 8, 0, 0, Math.PI * 2);
@@ -322,7 +381,7 @@ function drawReceiptGhost(ctx, x, y) {
   ctx.closePath();
   ctx.fill();
 
-  ctx.fillStyle = "#111";
+  ctx.fillStyle = "#06183a";
   ctx.beginPath();
   ctx.ellipse(36, 55, 7, 2.5, 0.35, 0, Math.PI * 2);
   ctx.fill();
@@ -338,10 +397,10 @@ function drawReceiptCanvas(profile, run, receipt) {
   const margin = 54;
   let y = 54;
 
-  ctx.fillStyle = "#f7f3df";
+  ctx.fillStyle = "#fbf5df";
   ctx.fillRect(0, 0, draft.width, draft.height);
-  ctx.fillStyle = "#111";
-  ctx.strokeStyle = "#111";
+  ctx.fillStyle = "#06183a";
+  ctx.strokeStyle = "#06183a";
   ctx.lineWidth = 2;
   ctx.font = "700 44px Courier New, monospace";
   ctx.textAlign = "center";

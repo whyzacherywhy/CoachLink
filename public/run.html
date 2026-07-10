@@ -53,10 +53,12 @@
           <label>
             <p>Coach notes / reflection</p>
             <textarea id="receiptNotes" required placeholder="What happened in the session, what you noticed, what improved, what needs attention."></textarea>
+            <button id="saveReceiptNotes" type="button">Edit notes</button>
           </label>
           <label>
             <p>Homework for runner</p>
             <textarea id="receiptTakeaway" required placeholder="What you want the runner to work on before the next session."></textarea>
+            <button id="saveReceiptHomework" type="button">Edit homework</button>
           </label>
         </div>
 
@@ -101,6 +103,7 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="/shared.js"></script>
+    <script src="/theme.js"></script>
     <script src="/run-storage.js"></script>
     <script src="/profiles.js"></script>
     <script src="/session.js"></script>
