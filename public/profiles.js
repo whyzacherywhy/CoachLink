@@ -392,19 +392,20 @@ function drawReceiptCanvas(profile, run, receipt, receiptGhost) {
   draft.height = 6000;
   const ctx = draft.getContext("2d");
   const margin = 54;
-  let y = 54;
+  let y = 44;
 
   ctx.fillStyle = "#fbf5df";
   ctx.fillRect(0, 0, draft.width, draft.height);
   ctx.fillStyle = "#06183a";
   ctx.strokeStyle = "#06183a";
   ctx.lineWidth = 2;
-  ctx.font = "700 48px Courier New, monospace";
+  ctx.font = "900 62px Courier New, monospace";
   ctx.textAlign = "center";
-  drawReceiptGhost(ctx, receiptGhost, 82, 0, 66);
-  drawReceiptGhost(ctx, receiptGhost, width - 148, 0, 66);
-  ctx.fillText("MOTION MIRROR", width / 2, y);
-  y += 28;
+  drawReceiptGhost(ctx, receiptGhost, 42, 12, 108);
+  drawReceiptGhost(ctx, receiptGhost, width - 150, 12, 108);
+  ctx.fillText("MOTION", width / 2, y + 12);
+  ctx.fillText("MIRROR", width / 2, y + 78);
+  y += 112;
   y = receiptDivider(ctx, y, width, margin);
 
   ctx.textAlign = "left";
