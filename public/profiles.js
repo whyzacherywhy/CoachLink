@@ -333,7 +333,7 @@ let receiptGhostPromise;
 function loadReceiptGhost() {
   receiptGhostPromise ||= new Promise((resolve, reject) => {
     const image = new Image();
-    image.onload = () => resolve(image);
+    image.onload = () => resolve(transparentReceiptGhost(image));
     image.onerror = reject;
     image.src = "/motion-mirror-receipt-ghost.png";
   });
@@ -364,8 +364,25 @@ async function downloadReceipt(profile, run, notes, takeaway, format) {
   link.click();
 }
 
-function drawReceiptGhost(ctx, image, x, y) {
-  ctx.drawImage(image, x, y, 58, 58);
+function transparentReceiptGhost(image) {
+  const canvas = document.createElement("canvas");
+  canvas.width = image.naturalWidth;
+  canvas.height = image.naturalHeight;
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(image, 0, 0);
+  const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  for (let i = 0; i < pixels.data.length; i += 4) {
+    const red = pixels.data[i];
+    const green = pixels.data[i + 1];
+    const blue = pixels.data[i + 2];
+    if (red > 225 && green > 225 && blue > 225) pixels.data[i + 3] = 0;
+  }
+  ctx.putImageData(pixels, 0, 0);
+  return canvas;
+}
+
+function drawReceiptGhost(ctx, image, x, y, size = 64) {
+  ctx.drawImage(image, x, y, size, size);
 }
 
 function drawReceiptCanvas(profile, run, receipt, receiptGhost) {
@@ -382,10 +399,10 @@ function drawReceiptCanvas(profile, run, receipt, receiptGhost) {
   ctx.fillStyle = "#06183a";
   ctx.strokeStyle = "#06183a";
   ctx.lineWidth = 2;
-  ctx.font = "700 44px Courier New, monospace";
+  ctx.font = "700 48px Courier New, monospace";
   ctx.textAlign = "center";
-  drawReceiptGhost(ctx, receiptGhost, 52, 6);
-  drawReceiptGhost(ctx, receiptGhost, width - 110, 6);
+  drawReceiptGhost(ctx, receiptGhost, 82, 0, 66);
+  drawReceiptGhost(ctx, receiptGhost, width - 148, 0, 66);
   ctx.fillText("MOTION MIRROR", width / 2, y);
   y += 28;
   y = receiptDivider(ctx, y, width, margin);
