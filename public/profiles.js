@@ -620,16 +620,13 @@ function smoothReceiptRoute(points) {
   let smoothed = points;
   for (let iteration = 0; iteration < 16; iteration += 1) {
     const next = [smoothed[0]];
-    for (let index = 0; index < smoothed.length - 1; index += 1) {
+    for (let index = 1; index < smoothed.length - 1; index += 1) {
+      const previous = smoothed[index - 1];
       const current = smoothed[index];
       const following = smoothed[index + 1];
       next.push({
-        x: current.x * 0.75 + following.x * 0.25,
-        y: current.y * 0.75 + following.y * 0.25,
-      });
-      next.push({
-        x: current.x * 0.25 + following.x * 0.75,
-        y: current.y * 0.25 + following.y * 0.75,
+        x: previous.x * 0.25 + current.x * 0.5 + following.x * 0.25,
+        y: previous.y * 0.25 + current.y * 0.5 + following.y * 0.25,
       });
     }
     next.push(smoothed.at(-1));
