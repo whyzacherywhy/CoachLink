@@ -439,7 +439,7 @@ function drawReceiptCanvas(profile, run, receipt, receiptAssets) {
   );
   y = receiptDivider(ctx, y, width, margin);
 
-  y = receiptHeading(ctx, "ROUTE MAP", y, margin);
+  y = receiptHeading(ctx, "ROUTE", y, margin);
   y = receiptRoute(ctx, run.route || [], y, margin, width - margin * 2);
   y = receiptDivider(ctx, y, width, margin);
 
@@ -457,9 +457,9 @@ function drawReceiptCanvas(profile, run, receipt, receiptAssets) {
   ]);
   y = receiptDivider(ctx, y, width, margin);
 
-  y = receiptBlock(ctx, "COACH NOTES / REFLECTION", receipt.notes, y, margin, width);
+  y = receiptBlock(ctx, "COACH NOTES", receipt.notes, y, margin, width);
   y = receiptDivider(ctx, y, width, margin);
-  y = receiptBlock(ctx, "HOMEWORK FOR RUNNER", receipt.takeaway, y, margin, width);
+  y = receiptBlock(ctx, "NEXT STEPS", receipt.takeaway, y, margin, width);
 
   y = receiptCheckerboard(ctx, y + 10, width, margin);
 
@@ -568,8 +568,6 @@ function receiptRoute(ctx, route, y, margin, mapWidth) {
   const rotated = best.rotated;
   const { minX, maxX, minY, maxY, width: routeWidthMeters, height: routeHeightMeters } = best.bounds;
   mapHeight = Math.max(minMapHeight, best.height);
-
-  ctx.strokeRect(margin, y, mapWidth, mapHeight);
 
   const scale = Math.min((mapWidth - pad * 2) / routeWidthMeters, (mapHeight - pad * 2) / routeHeightMeters);
   const routeWidth = routeWidthMeters * scale;
