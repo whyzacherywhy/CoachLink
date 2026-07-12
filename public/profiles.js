@@ -618,7 +618,7 @@ function receiptRoute(ctx, route, y, margin, mapWidth) {
 function smoothReceiptRoute(points) {
   if (points.length < 4) return points;
   let smoothed = points;
-  for (let iteration = 0; iteration < 4; iteration += 1) {
+  for (let iteration = 0; iteration < 16; iteration += 1) {
     const next = [smoothed[0]];
     for (let index = 0; index < smoothed.length - 1; index += 1) {
       const current = smoothed[index];
