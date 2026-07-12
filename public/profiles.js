@@ -496,7 +496,7 @@ function receiptHeading(ctx, text, y, margin) {
 }
 
 function receiptRoute(ctx, route, y, margin, mapWidth) {
-  const mapHeight = 190;
+  const mapHeight = 320;
   ctx.strokeRect(margin, y, mapWidth, mapHeight);
   if (route.length < 2) {
     ctx.font = "700 24px Courier New, monospace";
@@ -520,7 +520,7 @@ function receiptRoute(ctx, route, y, margin, mapWidth) {
   const maxY = Math.max(...ys);
   const xRange = maxX - minX || 1;
   const yRange = maxY - minY || 1;
-  const pad = 24;
+  const pad = 14;
   const scale = Math.min((mapWidth - pad * 2) / xRange, (mapHeight - pad * 2) / yRange);
   const routeWidth = xRange * scale;
   const routeHeight = yRange * scale;
@@ -552,7 +552,7 @@ function receiptRoute(ctx, route, y, margin, mapWidth) {
   ctx.arc(finish.x, finish.y, 7, 0, Math.PI * 2);
   ctx.fill();
   ctx.textAlign = "left";
-  return y + mapHeight + 26;
+  return y + mapHeight + 30;
 }
 
 function receiptSplits(ctx, rows, y, margin, mapper) {
