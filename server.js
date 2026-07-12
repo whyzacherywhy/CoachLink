@@ -23,6 +23,7 @@ import {
   updateCoachProfile,
   updateLiveSessionStatus,
   updateProfile,
+  updateRunCoachSplitLabels,
   updateRunNotes,
 } from "./db.js";
 
@@ -499,6 +500,21 @@ const server = http.createServer(async (req, res) => {
         body.notes || "",
         body.receiptNotes || "",
         body.homework || "",
+      );
+      if (!run) return json(res, 404, { error: "Run not found." });
+      return json(res, 200, { run });
+    }
+
+    const profileRunSplitsMatch = url.pathname.match(/^\/api\/profiles\/([^/]+)\/runs\/([^/]+)\/coach-splits$/);
+    if (profileRunSplitsMatch && req.method === "PATCH") {
+      if (!hasDatabase) return databaseUnavailable(res);
+      if (!coach) return authRequired(res);
+      const body = await readBody(req);
+      const run = await updateRunCoachSplitLabels(
+        profileRunSplitsMatch[1],
+        profileRunSplitsMatch[2],
+        coach.id,
+        body.splits || [],
       );
       if (!run) return json(res, 404, { error: "Run not found." });
       return json(res, 200, { run });

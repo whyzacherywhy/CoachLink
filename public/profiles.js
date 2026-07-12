@@ -290,8 +290,8 @@ function setupReceiptDownload(profile, run, fields) {
   setupSavedTextBox({
     textarea: takeaway,
     button: fields.receiptHomeworkButton,
-    editLabel: "Edit homework",
-    saveLabel: "Save homework",
+    editLabel: "Edit next steps",
+    saveLabel: "Save next steps",
     onSave: async () => {
       run.homework = takeaway.value;
       await updateRunNotes(profile.id, run.id, fields.notesInput.value, notes.value, takeaway.value);
@@ -452,7 +452,7 @@ function drawReceiptCanvas(profile, run, receipt, receiptAssets) {
 
   y = receiptHeading(ctx, "COACH SPLITS", y, margin);
   y = receiptSplits(ctx, run.coachSplits || [], y, margin, (split) => [
-    `Split ${split.number}`,
+    split.label || `Split ${split.number}`,
     `${formatDuration(split.elapsedSeconds)} / ${split.distanceMiles.toFixed(2)} mi / ${formatPace(split.pace)}`,
   ]);
   y = receiptDivider(ctx, y, width, margin);
@@ -582,9 +582,9 @@ function receiptRoute(ctx, route, y, margin, mapWidth) {
     };
   }
 
+  const routePoints = smoothReceiptRoute(rotated.map(mapPoint));
   ctx.beginPath();
-  rotated.forEach((point, index) => {
-    const routePoint = mapPoint(point);
+  routePoints.forEach((routePoint, index) => {
     if (index === 0) ctx.moveTo(routePoint.x, routePoint.y);
     else ctx.lineTo(routePoint.x, routePoint.y);
   });
@@ -609,6 +609,29 @@ function receiptRoute(ctx, route, y, margin, mapWidth) {
   ctx.fill();
   ctx.textAlign = "left";
   return y + mapHeight + 30;
+}
+
+function smoothReceiptRoute(points) {
+  if (points.length < 4) return points;
+  let smoothed = points;
+  for (let iteration = 0; iteration < 2; iteration += 1) {
+    const next = [smoothed[0]];
+    for (let index = 0; index < smoothed.length - 1; index += 1) {
+      const current = smoothed[index];
+      const following = smoothed[index + 1];
+      next.push({
+        x: current.x * 0.75 + following.x * 0.25,
+        y: current.y * 0.75 + following.y * 0.25,
+      });
+      next.push({
+        x: current.x * 0.25 + following.x * 0.75,
+        y: current.y * 0.25 + following.y * 0.75,
+      });
+    }
+    next.push(smoothed.at(-1));
+    smoothed = next;
+  }
+  return smoothed;
 }
 
 function receiptSplits(ctx, rows, y, margin, mapper) {
@@ -696,20 +719,72 @@ function renderMileTable(run) {
 
 function renderSplitTable(run) {
   const table = document.querySelector("#splitTable");
+  const editButton = document.querySelector("#editCoachSplits");
+  let editing = false;
   table.append(tableRow(["Split", "Pace", "Elev"], true));
   if (!run.coachSplits?.length) {
     table.append(tableRow(["--", "No coach splits", "--"]));
+    if (editButton) editButton.hidden = true;
     return;
   }
-  for (const split of run.coachSplits) {
-    table.append(
-      tableRow([
-        split.number,
-        `${formatPace(split.pace)} · ${split.distanceMiles.toFixed(2)} mi`,
-        signedFeet(split.elevationFeet),
-      ]),
-    );
+  renderRows();
+  if (!editButton) return;
+  editButton.addEventListener("click", async () => {
+    if (!editing) {
+      setEditing(true);
+      table.querySelector("input")?.focus();
+      return;
+    }
+    const splits = [...table.querySelectorAll("[data-split-label]")].map((input) => ({
+      number: Number(input.dataset.splitLabel),
+      label: input.value.trim() || `Split ${input.dataset.splitLabel}`,
+    }));
+    const updated = await updateRunCoachSplitLabels(params.get("profile"), params.get("run"), splits);
+    if (updated?.coachSplits) run.coachSplits = updated.coachSplits;
+    else {
+      for (const split of run.coachSplits) {
+        const next = splits.find((item) => item.number === split.number);
+        if (next) split.label = next.label;
+      }
+    }
+    setEditing(false);
+    editButton.textContent = "Saved";
+    setTimeout(() => (editButton.textContent = "Edit splits"), 900);
+  });
+
+  function setEditing(nextValue) {
+    editing = nextValue;
+    editButton.textContent = editing ? "Save splits" : "Edit splits";
+    renderRows();
   }
+
+  function renderRows() {
+    table.querySelectorAll(".data-row:not(.data-head)").forEach((row) => row.remove());
+    for (const split of run.coachSplits) table.append(splitTableRow(split, editing));
+  }
+}
+
+function splitTableRow(split, editing = false) {
+  const row = document.createElement("div");
+  row.className = "data-row split-label-row";
+  const label = split.label || `Split ${split.number}`;
+  const labelCell = document.createElement("span");
+  if (editing) {
+    const input = document.createElement("input");
+    input.dataset.splitLabel = split.number;
+    input.value = label;
+    input.maxLength = 24;
+    input.setAttribute("aria-label", `Split ${split.number} label`);
+    labelCell.append(input);
+  } else {
+    labelCell.textContent = label;
+  }
+  const paceCell = document.createElement("span");
+  paceCell.textContent = `${formatPace(split.pace)} · ${split.distanceMiles.toFixed(2)} mi`;
+  const elevationCell = document.createElement("span");
+  elevationCell.textContent = signedFeet(split.elevationFeet);
+  row.append(labelCell, paceCell, elevationCell);
+  return row;
 }
 
 function renderSummaryHistory(run) {

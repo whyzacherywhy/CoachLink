@@ -71,6 +71,7 @@ create table if not exists run_coach_splits (
   id bigserial primary key,
   run_id uuid not null references run_entries(id) on delete cascade,
   split_number integer not null,
+  label text not null default '',
   started_at timestamptz,
   ended_at timestamptz,
   elapsed_seconds integer not null default 0,
@@ -110,6 +111,7 @@ alter table run_mile_splits add column if not exists label text not null default
 alter table run_mile_splits add column if not exists distance_miles numeric(8, 3) not null default 1;
 alter table run_mile_splits add column if not exists is_partial boolean not null default false;
 alter table run_coach_splits add column if not exists distance_meters numeric(10, 2) not null default 0;
+alter table run_coach_splits add column if not exists label text not null default '';
 alter table coaches add column if not exists password_hash text;
 alter table live_sessions add column if not exists mode text not null default 'free';
 alter table run_entries add column if not exists receipt_notes text not null default '';

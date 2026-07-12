@@ -1281,6 +1281,18 @@ body.track-mode .runner-marker {
   border-bottom: 0;
 }
 
+.split-label-row input {
+  width: 100%;
+  min-height: 34px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  padding: 0 9px;
+  font: inherit;
+  font-weight: 850;
+}
+
 .data-head {
   color: var(--muted);
   font-size: 0.78rem;

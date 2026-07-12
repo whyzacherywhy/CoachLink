@@ -348,6 +348,7 @@ export async function getRun(profileId, runId, coachId) {
   }));
   run.coachSplits = coachSplits.rows.map((split) => ({
     number: split.split_number,
+    label: split.label || `Split ${split.split_number}`,
     startedAt: msDate(split.started_at),
     endedAt: msDate(split.ended_at),
     elapsedSeconds: Number(split.elapsed_seconds || 0),
@@ -431,13 +432,14 @@ export async function saveRun(profileId, coachId, run) {
     for (const split of run.coachSplits || []) {
       await client.query(
         `insert into run_coach_splits (
-           run_id, split_number, started_at, ended_at, elapsed_seconds,
+           run_id, split_number, label, started_at, ended_at, elapsed_seconds,
            distance_meters, distance_miles, pace, elevation_feet
          )
-         values ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
         [
           saved.id,
           split.number,
+          split.label || `Split ${split.number}`,
           isoDate(split.startedAt),
           isoDate(split.endedAt),
           Math.round(split.elapsedSeconds || 0),
@@ -472,6 +474,29 @@ export async function updateRunNotes(profileId, runId, coachId, notes, receiptNo
     [profileId, runId, notes || "", receiptNotes || "", homework || "", coachId],
   );
   return result.rows[0] ? mapRunSummary(result.rows[0]) : null;
+}
+
+export async function updateRunCoachSplitLabels(profileId, runId, coachId, splits = []) {
+  const run = await query(
+    `select re.id
+     from run_entries re
+     join runner_profiles rp on rp.id = re.profile_id
+     where re.profile_id = $1 and re.id = $2 and rp.coach_id = $3`,
+    [profileId, runId, coachId],
+  );
+  if (!run.rows[0]) return null;
+
+  for (const split of splits) {
+    await query(
+      `update run_coach_splits
+       set label = $3
+       where run_id = $1 and split_number = $2`,
+      [runId, Number(split.number), String(split.label || "").trim()],
+    );
+  }
+
+  await query("update run_entries set updated_at = now() where id = $1", [runId]);
+  return getRun(profileId, runId, coachId);
 }
 
 export async function deleteRun(profileId, runId, coachId) {

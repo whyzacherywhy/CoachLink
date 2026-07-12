@@ -196,6 +196,36 @@ function updateLocalRunNotes(profileIdValue, runIdValue, notes, receiptNotes = "
   return run;
 }
 
+async function updateRunCoachSplitLabels(profileIdValue, runIdValue, splits = []) {
+  try {
+    const payload = await apiJson(
+      `/api/profiles/${encodeURIComponent(profileIdValue)}/runs/${encodeURIComponent(runIdValue)}/coach-splits`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ splits }),
+      },
+    );
+    return payload.run;
+  } catch {
+    return updateLocalRunCoachSplitLabels(profileIdValue, runIdValue, splits);
+  }
+}
+
+function updateLocalRunCoachSplitLabels(profileIdValue, runIdValue, splits = []) {
+  const profiles = loadLocalProfiles();
+  const profile = profiles.find((item) => item.id === profileIdValue);
+  const run = profile?.runs?.find((item) => item.id === runIdValue);
+  if (!run) return null;
+  const labelsByNumber = new Map(splits.map((split) => [Number(split.number), String(split.label || "").trim()]));
+  run.coachSplits = (run.coachSplits || []).map((split) => ({
+    ...split,
+    label: labelsByNumber.get(Number(split.number)) || `Split ${split.number}`,
+  }));
+  run.updatedAt = Date.now();
+  saveLocalProfiles(profiles);
+  return run;
+}
+
 async function deleteRunFromProfile(profileIdValue, runIdValue) {
   try {
     await apiJson(`/api/profiles/${encodeURIComponent(profileIdValue)}/runs/${encodeURIComponent(runIdValue)}`, {
@@ -402,6 +432,7 @@ function buildRunSummary(session, weather) {
       const splitStats = effortSplitStats(points, split);
       return {
         number: split.number,
+        label: split.label || `Split ${split.number}`,
         startedAt: split.startedAt,
         endedAt: split.endedAt,
         elapsedSeconds: splitStats.elapsedSeconds,
