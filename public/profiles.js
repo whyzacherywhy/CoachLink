@@ -348,10 +348,10 @@ function loadReceiptAssets() {
   return receiptAssetsPromise;
 }
 
-function loadCoachFirstName() {
+function loadCoachName() {
   coachNamePromise ||= fetch("/api/auth/me")
     .then((response) => (response.ok ? response.json() : null))
-    .then((data) => String(data?.coach?.displayName || "Coach").trim().split(/\s+/)[0] || "Coach")
+    .then((data) => String(data?.coach?.displayName || "Coach").trim() || "Coach")
     .catch(() => "Coach");
   return coachNamePromise;
 }
@@ -368,11 +368,11 @@ async function downloadReceipt(profile, run, notes, takeaway, format) {
     return;
   }
 
-  const [receiptAssets, coachFirstName] = await Promise.all([loadReceiptAssets(), loadCoachFirstName()]);
+  const [receiptAssets, coachName] = await Promise.all([loadReceiptAssets(), loadCoachName()]);
   const canvas = drawReceiptCanvas(profile, run, {
     notes: notes.value.trim(),
     takeaway: takeaway.value.trim(),
-    coachFirstName,
+    coachName,
   }, receiptAssets);
   const link = document.createElement("a");
   const safeName = (profile.name || "runner").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
@@ -418,7 +418,11 @@ function drawReceiptCanvas(profile, run, receipt, receiptAssets) {
   const wordmarkWidth = 560;
   const wordmarkHeight = wordmarkWidth * (receiptAssets.wordmark.height / receiptAssets.wordmark.width);
   ctx.drawImage(receiptAssets.wordmark, (width - wordmarkWidth) / 2, y, wordmarkWidth, wordmarkHeight);
-  y += wordmarkHeight + 18;
+  y += wordmarkHeight + 8;
+  ctx.font = "900 20px Courier New, monospace";
+  ctx.textAlign = "center";
+  ctx.fillText(`COACHED BY ${String(receipt.coachName || "COACH").toUpperCase()}`, width / 2, y + 20);
+  y += 42;
   y = receiptDivider(ctx, y, width, margin);
 
   ctx.textAlign = "left";
@@ -460,10 +464,7 @@ function drawReceiptCanvas(profile, run, receipt, receiptAssets) {
   y = receiptBlock(ctx, "HOMEWORK FOR RUNNER", receipt.takeaway, y, margin, width);
   y = receiptDivider(ctx, y, width, margin);
 
-  ctx.font = "700 24px Courier New, monospace";
-  ctx.textAlign = "center";
-  ctx.fillText(`COACHED BY ${String(receipt.coachFirstName || "COACH").toUpperCase()}`, width / 2, y + 28);
-  y += 70;
+  y = receiptCheckerboard(ctx, y + 2, width, margin);
 
   const canvas = document.createElement("canvas");
   canvas.width = width;
@@ -477,6 +478,22 @@ function receiptDivider(ctx, y, width, margin) {
   ctx.textAlign = "left";
   ctx.fillText("-".repeat(43), margin, y + 28);
   return y + 54;
+}
+
+function receiptCheckerboard(ctx, y, width, margin) {
+  const square = 18;
+  const rows = 2;
+  const columns = Math.floor((width - margin * 2) / square);
+  const startX = margin + ((width - margin * 2) - columns * square) / 2;
+  ctx.save();
+  ctx.fillStyle = "#06183a";
+  for (let row = 0; row < rows; row += 1) {
+    for (let column = 0; column < columns; column += 1) {
+      if ((row + column) % 2 === 0) ctx.fillRect(startX + column * square, y + row * square, square, square);
+    }
+  }
+  ctx.restore();
+  return y + rows * square + 34;
 }
 
 function receiptLine(ctx, label, value, y, margin) {
