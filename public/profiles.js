@@ -330,10 +330,9 @@ let receiptAssetsPromise;
 let coachNamePromise;
 const receiptQuoteStorageKey = "motionMirror.lastReceiptQuote";
 const receiptQuotes = [
-  "This is living.",
-  "What a gift.",
+  { text: "This is living.", weight: 4 },
+  { text: "What a gift.", weight: 4 },
   "Keep it going.",
-  "See you next run.",
   "One more mile.",
   "Forward.",
   "Keep showing up.",
@@ -341,7 +340,6 @@ const receiptQuotes = [
   "Keep moving.",
   "Trust the process.",
   "Stay curious.",
-  "Another page written.",
   "The work is working.",
   "Stay the course.",
   "Onward.",
@@ -376,7 +374,6 @@ const receiptQuotes = [
   "Take the long way home.",
   "One run closer.",
   "The mirror remembers.",
-  "We'll be here.",
 ];
 
 function loadTransparentImage(src) {
@@ -411,8 +408,19 @@ function randomReceiptQuote() {
   } catch {
     lastQuote = "";
   }
-  const choices = receiptQuotes.length > 1 ? receiptQuotes.filter((quote) => quote !== lastQuote) : receiptQuotes;
-  const quote = choices[Math.floor(Math.random() * choices.length)] || receiptQuotes[0];
+  const choices = receiptQuotes
+    .map((entry) => (typeof entry === "string" ? { text: entry, weight: 1 } : entry))
+    .filter((entry) => receiptQuotes.length <= 1 || entry.text !== lastQuote);
+  const totalWeight = choices.reduce((sum, entry) => sum + (entry.weight || 1), 0);
+  let target = Math.random() * totalWeight;
+  let quote = choices[0]?.text || "Forward.";
+  for (const entry of choices) {
+    target -= entry.weight || 1;
+    if (target <= 0) {
+      quote = entry.text;
+      break;
+    }
+  }
   try {
     localStorage.setItem(receiptQuoteStorageKey, quote);
   } catch {
