@@ -13,6 +13,10 @@ let isLockingGps = false;
 let coachConnected = false;
 let gpsRequestId = 0;
 let runMode = "free";
+let pendingLocationPayloads = [];
+let isFlushingLocations = false;
+let lastLocationAckAt = 0;
+let lastHeartbeatAt = 0;
 
 const el = {
   name: document.querySelector("#runnerNameInput"),
@@ -48,6 +52,7 @@ function updateStatusBadges() {
   el.coachConnection.textContent = coachConnected ? "Coach connected" : "Coach disconnected";
   el.coachConnection.classList.toggle("is-connected", coachConnected);
   el.trackingStatus.textContent = isLockingGps ? "Locking GPS" : isTracking ? "Tracking" : "Tracking off";
+  if (isTracking && pendingLocationPayloads.length > 3) el.trackingStatus.textContent = "Syncing GPS";
   el.trackingStatus.classList.toggle("is-tracking", isTracking);
   el.start.disabled = !el.consent.checked || isLockingGps;
   el.trackMode.disabled = !el.consent.checked || isLockingGps;
@@ -143,16 +148,73 @@ async function sendPoint(point, action = "track") {
   const pointAt = point.at || Date.now();
   beginLocalTracking(pointAt);
   drawPoint(point);
-  await fetch("/api/location", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      sessionId,
-      runnerName: el.name.value.trim() || "Runner",
-      action,
-      mode: runMode,
-      ...point,
-    }),
+  queueLocationPayload({
+    sessionId,
+    runnerName: el.name.value.trim() || "Runner",
+    action,
+    mode: runMode,
+    ...point,
+  });
+}
+
+function queueLocationPayload(payload) {
+  pendingLocationPayloads.push(payload);
+  if (pendingLocationPayloads.length > 80) pendingLocationPayloads = pendingLocationPayloads.slice(-80);
+  flushLocationQueue();
+}
+
+async function flushLocationQueue() {
+  if (isFlushingLocations) return;
+  isFlushingLocations = true;
+  try {
+    while (pendingLocationPayloads.length) {
+      const payload = pendingLocationPayloads[0];
+      const response = await fetch("/api/location", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!response.ok) throw new Error("Location sync failed");
+      pendingLocationPayloads.shift();
+      lastLocationAckAt = Date.now();
+      updateStatusBadges();
+    }
+  } catch {
+    updateStatusBadges();
+  } finally {
+    isFlushingLocations = false;
+  }
+}
+
+async function postRunnerControl(path, body) {
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const response = await fetch(path, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (response.ok) return true;
+    } catch {
+      // Try again below.
+    }
+    await new Promise((resolve) => setTimeout(resolve, 700 * (attempt + 1)));
+  }
+  return false;
+}
+
+function heartbeatRunner() {
+  if (!isTracking || !points.length) return;
+  const now = Date.now();
+  if (now - lastHeartbeatAt < 30000) return;
+  lastHeartbeatAt = now;
+  queueLocationPayload({
+    sessionId,
+    runnerName: el.name.value.trim() || "Runner",
+    action: startedAt ? "track" : "start",
+    mode: runMode,
+    ...points.at(-1),
+    at: now,
   });
 }
 
@@ -236,11 +298,8 @@ async function pauseRun() {
   clearInterval(demoTimer);
   demoTimer = null;
   freezeLocalTracking();
-  await fetch("/api/pause", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ sessionId }),
-  });
+  await flushLocationQueue();
+  await postRunnerControl("/api/pause", { sessionId });
 }
 
 async function stopRun() {
@@ -250,11 +309,15 @@ async function stopRun() {
   clearInterval(demoTimer);
   demoTimer = null;
   freezeLocalTracking();
-  await fetch("/api/stop", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ sessionId }),
-  });
+  await flushLocationQueue();
+  const stopped = await postRunnerControl("/api/stop", { sessionId });
+  if (!stopped) {
+    alert("Motion Mirror could not confirm stop with the coach dashboard. Check your connection and tap Stop again.");
+    isTracking = false;
+    updateStatusBadges();
+    return;
+  }
+  pendingLocationPayloads = [];
   resetLocalSession();
 }
 
@@ -312,3 +375,5 @@ updateStatusBadges();
 updateRunnerInitial();
 updateUi();
 setInterval(updateUi, 1000);
+setInterval(flushLocationQueue, 5000);
+setInterval(heartbeatRunner, 5000);

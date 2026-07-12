@@ -591,6 +591,12 @@ const server = http.createServer(async (req, res) => {
       const body = await readBody(req);
       const session = await loadSession(body.sessionId || "demo");
       if (hasDatabase && !session.coachId) return json(res, 404, { error: "Session not found." });
+      const recordedAt = Number(body.at);
+      const now = Date.now();
+      const pointAt =
+        Number.isFinite(recordedAt) && recordedAt > now - 1000 * 60 * 60 * 6 && recordedAt < now + 1000 * 60
+          ? recordedAt
+          : now;
       const point = {
         lat: Number(body.lat),
         lng: Number(body.lng),
@@ -598,7 +604,7 @@ const server = http.createServer(async (req, res) => {
         altitude: body.altitude === null ? null : Number(body.altitude),
         speed: body.speed === null ? null : Number(body.speed),
         heading: body.heading === null ? null : Number(body.heading),
-        at: Date.now(),
+        at: pointAt,
       };
 
       if (!Number.isFinite(point.lat) || !Number.isFinite(point.lng)) {
