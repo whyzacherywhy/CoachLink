@@ -836,6 +836,13 @@ body.track-mode .runner-marker {
   letter-spacing: 0;
 }
 
+.coach-welcome {
+  display: block;
+  margin-top: 8px;
+  color: var(--muted);
+  font-weight: 850;
+}
+
 .archive-nav,
 .home-grid {
   display: flex;
