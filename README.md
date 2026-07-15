@@ -30,3 +30,13 @@ See:
 - `HOSTING_PLAN.md`
 - `DATABASE_MIGRATION_CHECKLIST.md`
 - `db/schema.sql`
+
+## Mobile App Direction
+
+The next major product step is a native runner app for reliable locked-phone/background GPS.
+
+Start with the runner app first and keep the coach dashboard/profiles on the web until the GPS foundation is proven.
+
+See:
+
+- `MOBILE_APP_ROADMAP.md`
