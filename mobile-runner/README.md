@@ -1,6 +1,6 @@
 # Motion Mirror Runner App
 
-This folder is reserved for the native mobile runner app.
+This folder contains the first native mobile runner app scaffold.
 
 The first version should be built as an Expo / React Native app that sends native GPS updates to the existing Motion Mirror backend.
 
@@ -37,6 +37,36 @@ POST /api/stop
 GET  /api/sessions
 ```
 
+## Install And Run
+
+From this folder:
+
+```sh
+npm install
+npm start
+```
+
+Then use Expo to open the app.
+
+For serious iPhone background GPS testing, this will need a development build or TestFlight build. Expo Go is useful for quick screen checks, but it is not the final locked-phone GPS test.
+
+## Current Build Status
+
+The first app screen includes:
+
+- session id input
+- runner name input
+- consent checkbox
+- start free run
+- start track mode
+- pause
+- stop confirmation
+- local run stats
+- GPS accuracy readout
+- queued upload count
+- location uploads to the existing Motion Mirror backend
+- background location configuration for native builds
+
 ## First Real Test
 
 The first successful mobile test is:
@@ -48,4 +78,3 @@ The first successful mobile test is:
 5. Coach still sees live movement and pace.
 6. Runner stops.
 7. Coach can save the session.
-
