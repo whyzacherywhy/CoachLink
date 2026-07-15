@@ -1,10 +1,9 @@
 const metersToMiles = (meters) => meters / 1609.344;
 const metersToFeet = (meters) => meters * 3.28084;
 const splitDistanceMiles = 1;
-const maxReliableAccuracyMeters = 65;
-const poorAccuracyMeters = 35;
-const hardAccuracyMeters = 55;
+const unusableAccuracyMeters = 180;
 const maxRunningSpeedMetersPerSecond = 8.5;
+const maxPossibleRunnerSpeedMetersPerSecond = 11.2;
 const minElevationChangeFeet = 3;
 const minSplitMilesForOwnPace = 0.15;
 const minSplitSecondsForOwnPace = 45;
@@ -35,12 +34,11 @@ function usableSegmentMeters(a, b) {
 
   const accuracy = Math.max(Number(a.accuracy || 0), Number(b.accuracy || 0));
   const speed = meters / Math.max(1, seconds);
-  const jitterFloorMeters = Math.min(4, Math.max(1, accuracy * 0.12));
+  const jitterFloorMeters = Math.min(5, Math.max(1, accuracy * 0.05));
 
-  if (accuracy > hardAccuracyMeters && meters < accuracy * 1.5) return 0;
-  if (accuracy > poorAccuracyMeters && meters < accuracy * 0.65) return 0;
-  if (accuracy > maxReliableAccuracyMeters && meters < accuracy) return 0;
+  if (accuracy > unusableAccuracyMeters && meters < 20) return 0;
   if (meters < jitterFloorMeters) return 0;
+  if (speed > maxPossibleRunnerSpeedMetersPerSecond && meters > 18) return 0;
   if (speed > maxRunningSpeedMetersPerSecond && meters > 25) return 0;
 
   return meters;
