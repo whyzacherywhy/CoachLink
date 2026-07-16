@@ -189,6 +189,16 @@ async function postControl(path, sessionId) {
   if (!response.ok) throw new Error("Control upload failed");
 }
 
+async function postRunnerPresence(sessionId, connected = true) {
+  const response = await fetch(`${apiBaseUrl}/api/runner-presence`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ sessionId, connected }),
+  });
+  if (!response.ok) throw new Error("Presence update failed");
+  return response.json();
+}
+
 TaskManager.defineTask(backgroundLocationTask, async ({ data, error }) => {
   if (error) return;
   const trackingState = await readTrackingState();
@@ -219,8 +229,10 @@ export default function App() {
   const [pendingUploads, setPendingUploads] = useState([]);
   const [lastAccuracy, setLastAccuracy] = useState(null);
   const [tick, setTick] = useState(Date.now());
+  const [coachConnected, setCoachConnected] = useState(false);
   const subscriptionRef = useRef(null);
   const tickRef = useRef(null);
+  const presenceRef = useRef(null);
 
   const elapsedSeconds = useMemo(() => {
     if (isTracking && trackingStartedAt) return (elapsedMs + Date.now() - trackingStartedAt) / 1000;
@@ -261,6 +273,28 @@ export default function App() {
       cancelled = true;
     };
   }, [pendingUploads]);
+
+  useEffect(() => {
+    async function pingPresence() {
+      const cleanSession = cleanSessionId(sessionId);
+      if (!cleanSession) return;
+      try {
+        const result = await postRunnerPresence(cleanSession, true);
+        setCoachConnected(Boolean(result.presence?.coachConnected));
+      } catch {
+        setCoachConnected(false);
+      }
+    }
+
+    pingPresence();
+    presenceRef.current = setInterval(pingPresence, 5000);
+
+    return () => {
+      clearInterval(presenceRef.current);
+      const cleanSession = cleanSessionId(sessionId);
+      if (cleanSession) postRunnerPresence(cleanSession, false).catch(() => {});
+    };
+  }, [sessionId]);
 
   async function queuePoint(point, action = "track") {
     const cleanSession = cleanSessionId(sessionId) || "demo";
@@ -480,6 +514,7 @@ async function requestPermissions() {
 
           <View style={styles.statusCard}>
             <Text style={styles.status}>{status}</Text>
+            <Text style={styles.statusDetail}>Coach: {coachConnected ? "connected" : "disconnected"}</Text>
             <Text style={styles.statusDetail}>Queued uploads: {pendingUploads.length}</Text>
             <Text style={styles.statusDetail}>GPS accuracy: {Number.isFinite(lastAccuracy) ? `${Math.round(metersToFeet(lastAccuracy))} ft` : "--"}</Text>
           </View>

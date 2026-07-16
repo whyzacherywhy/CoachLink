@@ -282,10 +282,15 @@ function broadcastRunner(sessionId, event, data) {
 }
 
 function sessionPresence(session) {
+  const mobileRunnerFresh =
+    Boolean(session.mobileRunnerConnected) &&
+    Number.isFinite(session.mobileRunnerLastSeenAt) &&
+    Date.now() - session.mobileRunnerLastSeenAt < 15000;
+
   return {
     sessionId: session.id,
     coachConnected: (session.coachConnections || 0) > 0,
-    runnerConnected: (session.runnerConnections || 0) > 0,
+    runnerConnected: (session.runnerConnections || 0) > 0 || mobileRunnerFresh,
   };
 }
 
@@ -585,6 +590,18 @@ const server = http.createServer(async (req, res) => {
         broadcastPresence(session);
       });
       return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/runner-presence") {
+      const body = await readBody(req);
+      const session = await loadSession(body.sessionId || "demo");
+      if (hasDatabase && !session.coachId) return json(res, 404, { error: "Session not found." });
+
+      const runnerConnected = body.connected !== false;
+      session.mobileRunnerConnected = runnerConnected;
+      session.mobileRunnerLastSeenAt = runnerConnected ? Date.now() : null;
+      broadcastPresence(session);
+      return json(res, 200, { ok: true, presence: sessionPresence(session) });
     }
 
     if (req.method === "POST" && url.pathname === "/api/location") {
