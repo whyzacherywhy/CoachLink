@@ -341,9 +341,7 @@ function drawShareCanvas(run, assets) {
   ctx.fillStyle = ink;
   const wordmarkWidth = 660;
   const wordmarkHeight = wordmarkWidth * (assets.wordmark.height / assets.wordmark.width);
-  ctx.drawImage(assets.wordmark, (width - wordmarkWidth) / 2, 815, wordmarkWidth, wordmarkHeight);
-  const ghostSize = 88;
-  ctx.drawImage(assets.ghost, (width - ghostSize) / 2, 815 + wordmarkHeight + 18, ghostSize, ghostSize);
+  drawWhiteImage(ctx, assets.wordmark, (width - wordmarkWidth) / 2, 765, wordmarkWidth, wordmarkHeight);
 
   const stats = [
     ["Distance", `${run.distanceMiles.toFixed(2)} mi`],
@@ -354,12 +352,23 @@ function drawShareCanvas(run, assets) {
   stats.forEach(([label, value], index) => {
     const x = columnWidth * index + columnWidth / 2;
     ctx.font = "900 32px Helvetica, Arial, sans-serif";
-    ctx.fillText(label, x, 1080);
+    ctx.fillText(label, x, 1010);
     ctx.font = "900 58px Helvetica, Arial, sans-serif";
-    ctx.fillText(value, x, 1150);
+    ctx.fillText(value, x, 1080);
   });
+  const ghostSize = 92;
+  drawWhiteImage(ctx, assets.ghost, (width - ghostSize) / 2, 1140, ghostSize, ghostSize);
 
   return canvas;
+}
+
+function drawWhiteImage(ctx, image, x, y, width, height) {
+  ctx.save();
+  ctx.drawImage(image, x, y, width, height);
+  ctx.globalCompositeOperation = "source-in";
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(x, y, width, height);
+  ctx.restore();
 }
 
 function drawShareRoute(ctx, route, x, y, width, height, color) {
