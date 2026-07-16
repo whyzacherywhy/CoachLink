@@ -35,6 +35,10 @@ const sessions = new Map();
 const coachStreams = new Set();
 const runnerStreams = new Map();
 const sessionSecret = process.env.SESSION_SECRET || "local-dev-secret-change-me";
+const metersToMiles = (meters) => meters / 1609.344;
+const unusableAccuracyMeters = 180;
+const maxRunningSpeedMetersPerSecond = 8.5;
+const maxPossibleRunnerSpeedMetersPerSecond = 11.2;
 
 function json(res, status, body) {
   const payload = JSON.stringify(body);
@@ -116,6 +120,38 @@ async function currentCoach(req) {
 
 function authRequired(res) {
   return json(res, 401, { error: "Coach login required." });
+}
+
+function distanceMeters(a, b) {
+  const earth = 6371000;
+  const toRad = (value) => (value * Math.PI) / 180;
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const lat1 = toRad(a.lat);
+  const lat2 = toRad(b.lat);
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+  return 2 * earth * Math.asin(Math.sqrt(h));
+}
+
+function usableSegmentMeters(a, b) {
+  const meters = distanceMeters(a, b);
+  if (!Number.isFinite(meters) || meters < 1) return 0;
+
+  const seconds = Math.max(0, ((b?.at || 0) - (a?.at || 0)) / 1000);
+  if (seconds <= 0) return 0;
+
+  const accuracy = Math.max(Number(a.accuracy || 0), Number(b.accuracy || 0));
+  const speed = meters / Math.max(1, seconds);
+  const jitterFloorMeters = Math.min(5, Math.max(1, accuracy * 0.05));
+
+  if (accuracy > unusableAccuracyMeters && meters < 20) return 0;
+  if (meters < jitterFloorMeters) return 0;
+  if (speed > maxPossibleRunnerSpeedMetersPerSecond && meters > 18) return 0;
+  if (speed > maxRunningSpeedMetersPerSecond && meters > 25) return 0;
+
+  return meters;
 }
 
 function getSession(id) {
@@ -208,6 +244,55 @@ function effortElapsedMs(effortSplit, now = Date.now()) {
   );
 }
 
+function effortDistanceMeters(points, effortSplit) {
+  if (!effortSplit?.startedAt || points.length < 2) return 0;
+  const splitPoints = points.filter((point) => {
+    const at = point.at || 0;
+    return at >= effortSplit.startedAt && (!effortSplit.endedAt || at <= effortSplit.endedAt);
+  });
+  let meters = 0;
+  for (let index = 1; index < splitPoints.length; index += 1) {
+    meters += usableSegmentMeters(splitPoints[index - 1], splitPoints[index]);
+  }
+  return meters;
+}
+
+function autoCloseTargetSplit(session, now = Date.now()) {
+  const current = session.effortSplit;
+  if (!current?.targetMeters || current.targetMeters <= 0) return false;
+
+  const meters = effortDistanceMeters(session.points || [], current);
+  if (meters < current.targetMeters) return false;
+
+  const completedSplits = session.effortSplits || [];
+  completedSplits.push({
+    ...current,
+    label: current.label || `${Math.round(current.targetMeters)}m rep`,
+    endedAt: now,
+    endPointIndex: session.points.length,
+    elapsedMs: effortElapsedMs(current, now),
+    targetMeters: current.targetMeters,
+  });
+
+  session.effortSplits = completedSplits;
+  session.effortSplit = {
+    number: completedSplits.length + 1,
+    label: "Recovery",
+    startedAt: now,
+    startedPointIndex: session.points.length,
+    elapsedMs: 0,
+    trackingStartedAt: session.status === "live" ? now : null,
+    targetMeters: null,
+  };
+
+  session.cues.push({
+    text: `${Math.round(current.targetMeters)}m rep complete · ${metersToMiles(current.targetMeters).toFixed(2)} mi`,
+    at: now,
+  });
+  if (session.cues.length > 50) session.cues.shift();
+  return true;
+}
+
 function startTracking(session, now = Date.now()) {
   if (session.status !== "live") {
     session.trackingStartedAt = now;
@@ -222,10 +307,12 @@ function startCoachSplit(session, now = Date.now()) {
   if (session.effortSplit) return;
   session.effortSplit = {
     number: (session.effortSplits || []).length + 1,
+    label: "Split 1",
     startedAt: now,
     startedPointIndex: session.points.length,
     elapsedMs: 0,
     trackingStartedAt: session.status === "live" ? now : null,
+    targetMeters: null,
   };
 }
 
@@ -630,6 +717,9 @@ const server = http.createServer(async (req, res) => {
 
       const action = ["start", "resume", "track"].includes(body.action) ? body.action : "track";
       const mode = body.mode === "track" ? "track" : body.mode === "free" ? "free" : session.mode || "free";
+      if (session.status === "stopped" && action === "start") {
+        resetSession(session);
+      }
       const previousStatus = session.status;
       const isFirstPoint = !session.startedAt;
 
@@ -662,6 +752,7 @@ const server = http.createServer(async (req, res) => {
       session.lastPoint = point;
       session.points.push(point);
       if (session.points.length > 2000) session.points.shift();
+      autoCloseTargetSplit(session, point.at);
 
       broadcastCoach("session", serializeSession(session));
       return json(res, 200, { ok: true, session: serializeSession(session) });
@@ -718,12 +809,18 @@ const server = http.createServer(async (req, res) => {
         effortSplits: [...(session.effortSplits || [])],
         effortSplit: session.effortSplit ? { ...session.effortSplit, endedAt: now } : null,
       });
-      resetSession(session);
-      session.events = events;
+      Object.assign(session, {
+        ...endedSession,
+        events,
+        status: "stopped",
+        trackingStartedAt: null,
+        effortSplit: endedSession.effortSplit,
+      });
       if (hasDatabase && session.coachId) {
         updateLiveSessionStatus(session.id, { status: "stopped", elapsedMs: endedSession.elapsedMs }).catch(() => {});
       }
       broadcastCoach("ended-session", endedSession);
+      broadcastCoach("session", endedSession);
       broadcastRunner(session.id, "reset", serializeSession(session));
       return json(res, 200, { ok: true, session: serializeSession(session) });
     }
@@ -751,7 +848,7 @@ const server = http.createServer(async (req, res) => {
       if (!session) return json(res, 404, { error: "Session not found." });
       const now = Date.now();
       const targetMeters = Number(body.targetMeters || 0);
-      const completedTargetMeters = Number.isFinite(targetMeters) && targetMeters > 0 ? targetMeters : null;
+      const nextTargetMeters = Number.isFinite(targetMeters) && targetMeters > 0 ? targetMeters : null;
       const completedSplits = session.effortSplits || [];
       const current = session.effortSplit;
       const canCompleteFromStart = !current && (session.startedAt || session.points[0]?.at);
@@ -764,23 +861,25 @@ const server = http.createServer(async (req, res) => {
         }
         completedSplits.push({
           number: current?.number || completedSplits.length + 1,
+          label: current?.label || `Split ${current?.number || completedSplits.length + 1}`,
           startedAt,
           endedAt: now,
           startedPointIndex: current?.startedPointIndex || 0,
           endPointIndex: session.points.length,
           elapsedMs: elapsed,
-          targetMeters: completedTargetMeters || current?.targetMeters || null,
+          targetMeters: current?.targetMeters || null,
         });
       }
 
       session.effortSplits = completedSplits;
       session.effortSplit = {
         number: completedSplits.length + 1,
+        label: nextTargetMeters ? `${Math.round(nextTargetMeters)}m rep` : `Split ${completedSplits.length + 1}`,
         startedAt: now,
         startedPointIndex: session.points.length,
         elapsedMs: 0,
         trackingStartedAt: session.status === "live" ? now : null,
-        targetMeters: null,
+        targetMeters: nextTargetMeters,
       };
 
       broadcastCoach("session", serializeSession(session));

@@ -403,9 +403,10 @@ function buildHistoryRows(session, summary) {
     rows.push({ at: event.at, text: eventLabelForSummary(event.type) });
   }
   for (const split of summary.coachSplits) {
+    const splitLabel = split.label || `Coach split ${split.number}`;
     rows.push({
       at: split.endedAt || split.startedAt,
-      text: `Coach split ${split.number}: ${formatDuration(split.elapsedSeconds)} · ${split.distanceMiles.toFixed(2)} mi · ${formatPace(split.pace)} · elev ${signedFeet(split.elevationFeet)}`,
+      text: `${splitLabel}: ${formatDuration(split.elapsedSeconds)} · ${split.distanceMiles.toFixed(2)} mi · ${formatPace(split.pace)} · elev ${signedFeet(split.elevationFeet)}`,
     });
   }
   for (const mile of summary.mileSplits) {

@@ -385,9 +385,10 @@ function renderHistory(session, points, effort) {
 
   for (const split of session.effortSplits || []) {
     const splitStats = effortSplitStats(points, split);
+    const splitLabel = split.label || `Coach split ${split.number}`;
     items.push({
       at: split.endedAt || split.startedAt,
-      html: `<span>${formatTime(split.endedAt || split.startedAt)}</span>Coach split ${split.number}: ${formatDuration(splitStats.elapsedSeconds)} · ${splitStats.miles.toFixed(2)} mi · ${formatPace(splitStats.pace)} · ${elevationLabel(effortElevationFeet(points, split))}`,
+      html: `<span>${formatTime(split.endedAt || split.startedAt)}</span>${escapeHtml(splitLabel)}: ${formatDuration(splitStats.elapsedSeconds)} · ${splitStats.miles.toFixed(2)} mi · ${formatPace(splitStats.pace)} · ${elevationLabel(effortElevationFeet(points, split))}`,
     });
   }
 
@@ -454,6 +455,7 @@ function drawSession(session) {
   activeSession = { ...session, receivedAt: Date.now() };
   document.body.classList.toggle("track-mode", session.mode === "track");
   el.trackRepControl.hidden = session.mode !== "track";
+  updateSplitButtonLabel();
   const points = session.points || [];
   if (points.length > 1 && session.startedAt) {
     lastSaveableSession = snapshotForSave(activeSession);
@@ -487,7 +489,9 @@ function drawSession(session) {
   el.currentSplit.textContent = formatPace(stats.splitPace);
   el.currentGain.textContent = `+${Math.round(currentGainFeet(points))} ft`;
   el.effortTitle.textContent = currentCoachSplit
-    ? `Split ${currentCoachSplit.number} measuring`
+    ? currentCoachSplit.targetMeters
+      ? `${Math.round(currentCoachSplit.targetMeters)}m rep measuring`
+      : currentCoachSplit.label || `Split ${currentCoachSplit.number} measuring`
     : "Waiting for runner";
   el.effortPace.textContent = formatPace(effort.pace);
   el.effortDistance.textContent = `${effort.miles.toFixed(2)} mi`;
@@ -570,6 +574,11 @@ async function startEffortSplit() {
     splitRequestPending = false;
     el.startEffortSplit.disabled = false;
   }
+}
+
+function updateSplitButtonLabel() {
+  el.startEffortSplit.textContent =
+    activeSession.mode === "track" ? `Start ${selectedTrackMeters}m rep` : "Split";
 }
 
 async function populateProfileSelect() {
@@ -689,9 +698,11 @@ document.querySelectorAll("[data-track-meters]").forEach((button) => {
   button.addEventListener("click", () => {
     selectedTrackMeters = Number(button.dataset.trackMeters);
     document.querySelectorAll("[data-track-meters]").forEach((item) => item.classList.toggle("active", item === button));
+    updateSplitButtonLabel();
   });
   button.classList.toggle("active", Number(button.dataset.trackMeters) === selectedTrackMeters);
 });
+updateSplitButtonLabel();
 el.saveRun.addEventListener("click", openSaveModal);
 el.closeSaveModal.addEventListener("click", closeSaveModal);
 el.saveModal.addEventListener("click", (event) => {
