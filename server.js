@@ -849,6 +849,7 @@ const server = http.createServer(async (req, res) => {
       const now = Date.now();
       const targetMeters = Number(body.targetMeters || 0);
       const nextTargetMeters = Number.isFinite(targetMeters) && targetMeters > 0 ? targetMeters : null;
+      const nextLabel = String(body.label || "").trim().slice(0, 32);
       const completedSplits = session.effortSplits || [];
       const current = session.effortSplit;
       const canCompleteFromStart = !current && (session.startedAt || session.points[0]?.at);
@@ -874,7 +875,7 @@ const server = http.createServer(async (req, res) => {
       session.effortSplits = completedSplits;
       session.effortSplit = {
         number: completedSplits.length + 1,
-        label: nextTargetMeters ? `${Math.round(nextTargetMeters)}m rep` : `Split ${completedSplits.length + 1}`,
+        label: nextLabel || (nextTargetMeters ? `${Math.round(nextTargetMeters)}m rep` : `Split ${completedSplits.length + 1}`),
         startedAt: now,
         startedPointIndex: session.points.length,
         elapsedMs: 0,

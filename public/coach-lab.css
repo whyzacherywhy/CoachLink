@@ -464,6 +464,12 @@ p {
   gap: 6px;
 }
 
+.track-rep-control .recovery-button {
+  grid-column: span 3;
+  border-color: rgba(143, 224, 107, 0.46);
+  color: var(--green);
+}
+
 .track-rep-control button {
   min-height: 34px;
   padding: 0 8px;

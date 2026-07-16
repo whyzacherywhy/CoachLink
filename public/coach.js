@@ -57,6 +57,7 @@ const el = {
   effortMeters: document.querySelector("#effortMeters"),
   effortElapsed: document.querySelector("#effortElapsed"),
   startEffortSplit: document.querySelector("#startEffortSplit"),
+  startRecoverySplit: document.querySelector("#startRecoverySplit"),
   trackRepControl: document.querySelector("#trackRepControl"),
   latestCue: document.querySelector("#latestCue"),
   cueForm: document.querySelector("#cueForm"),
@@ -557,22 +558,36 @@ async function updateRunnerName(event) {
 }
 
 async function startEffortSplit() {
+  return startCoachSegment({
+    targetMeters: activeSession.mode === "track" ? selectedTrackMeters : null,
+    label: activeSession.mode === "track" ? `${selectedTrackMeters}m rep` : null,
+  });
+}
+
+async function startRecoverySplit() {
+  return startCoachSegment({ targetMeters: null, label: "Recovery" });
+}
+
+async function startCoachSegment({ targetMeters = null, label = null } = {}) {
   if (splitRequestPending) return;
   splitRequestPending = true;
   el.startEffortSplit.disabled = true;
+  if (el.startRecoverySplit) el.startRecoverySplit.disabled = true;
   try {
     const response = await fetch("/api/effort-split", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         sessionId,
-        targetMeters: activeSession.mode === "track" ? selectedTrackMeters : null,
+        targetMeters,
+        label,
       }),
     });
     if (!response.ok) throw new Error("Effort split failed");
   } finally {
     splitRequestPending = false;
     el.startEffortSplit.disabled = false;
+    if (el.startRecoverySplit) el.startRecoverySplit.disabled = false;
   }
 }
 
@@ -694,6 +709,7 @@ el.cueForm.addEventListener("submit", async (event) => {
 
 el.runnerNameForm.addEventListener("submit", updateRunnerName);
 el.startEffortSplit.addEventListener("click", startEffortSplit);
+el.startRecoverySplit?.addEventListener("click", startRecoverySplit);
 document.querySelectorAll("[data-track-meters]").forEach((button) => {
   button.addEventListener("click", () => {
     selectedTrackMeters = Number(button.dataset.trackMeters);
